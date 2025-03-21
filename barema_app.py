@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 from io import BytesIO
 
-st.set_page_config(page_title="Consulta WS - Edital IC 2025", layout="centered")
+st.set_page_config(page_title="Barema Orientador - Edital IC 2025", layout="centered")
 st.title("🔍 Consulta de Produção - Edital IC 2025")
 
 # Inputs do usuário
@@ -13,7 +13,7 @@ data_nasc = st.text_input("Data de nascimento (DDMMAAAA):", placeholder="Ex: 010
 ano_inicio = st.text_input("Ano de início da produção:", value="2021")
 ano_fim = st.text_input("Ano de fim da produção:", value="2025")
 
-if st.button("Consultar WS"):
+if st.button("Buscar dados Lattes"):
     if not cpf or not nome or not data_nasc:
         st.warning("Por favor, preencha todos os campos obrigatórios.")
     else:
@@ -36,7 +36,7 @@ if st.button("Consultar WS"):
             "downloadXml": 0
         }
 
-        with st.spinner("Consultando webservice..."):
+        with st.spinner("Consultando base CNPq..."):
             response = requests.post(url, json=payload, headers=headers)
 
         if response.status_code == 200:
