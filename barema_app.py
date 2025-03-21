@@ -45,7 +45,7 @@ if st.button("Buscar dados Lattes"):
             df_t = df.T
             df_t.columns = ['Valor']
             st.success("Consulta realizada com sucesso!")
-            st.subheader("📊 Resultado da Consulta (Transposto)")
+            st.subheader("📊 Resultado da Consulta ")
             st.dataframe(df_t)
 
             # Botão de download
