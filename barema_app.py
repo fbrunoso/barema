@@ -83,7 +83,9 @@ if st.button("Consultar WS"):
         if resultados:
             df_final = pd.concat(resultados, ignore_index=True)
             df_t = df_final.T
-            df_t.columns = ['Valor']
+            if df_t.shape[1] == 1:
+                df_t.columns = ['Valor']
+
             st.success("Consulta realizada com sucesso!")
             st.subheader("📊 Resultado da Consulta (Transposto)")
             st.dataframe(df_t)
