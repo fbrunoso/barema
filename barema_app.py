@@ -11,8 +11,8 @@ st.title("🔍 Consulta de Produção - Edital IC 2025")
 
 # Função para envio de e-mail com anexo
 def enviar_email(destinatario, nome, arquivo_excel):
-    remetente = "seuemail@gmail.com"  # Substituir pelo e-mail de envio
-    senha = "sua_senha_de_aplicativo"  # Usar senha de app, se for Gmail
+    remetente = st.secrets["email_remetente"]
+    senha = st.secrets["senha_app"]
 
     msg = EmailMessage()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
