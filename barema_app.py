@@ -60,8 +60,8 @@ if not uploaded_file:
 # === Carrega e limpa os dados do CSV
 pesos_df = pd.read_csv(uploaded_file)
 pesos_df.columns = pesos_df.columns.str.strip().str.lower()
-pesos_df["tipo"] = pesos_df["tipo"].fillna("0").astype(str)
-pesos_df["peso"] = pesos_df["peso"].fillna(0)
+pesos_df["tipo"] = pesos_df["tipo"].fillna("0").astype(str).str.strip()
+pesos_df["peso"] = pd.to_numeric(pesos_df["peso"], errors="coerce").fillna(0)
 
 # === Busca dados da API
 st.subheader("🔍 Coleta de Dados da API")
@@ -95,24 +95,33 @@ opcoes_tipo = ["0", "1", "2", "3"]
 for _, row in pesos_df.iterrows():
     indicador = row["indicador"]
     col1, col2 = st.columns([0.6, 0.4])
+
     with col1:
         pesos[indicador] = st.number_input(
             f"Peso - {indicador}", value=float(row["peso"]), step=0.1, key=f"peso_{indicador}"
         )
+
     with col2:
-        tipo_padrao = str(int(float(row["tipo"]))) if row["tipo"] in ["1", "2", "3"] else "0"
+        raw_tipo = str(row.get("tipo", "0")).strip()
+        if raw_tipo not in opcoes_tipo:
+            st.warning(f"⚠️ Tipo inválido para '{indicador}': '{raw_tipo}' — substituído por '0'")
+            raw_tipo = "0"
         tipos[indicador] = st.radio(
             f"Tipo - {indicador}", options=opcoes_tipo,
-            index=opcoes_tipo.index(tipo_padrao), horizontal=True, key=f"tipo_{indicador}"
+            index=opcoes_tipo.index(raw_tipo), horizontal=True, key=f"tipo_{indicador}"
         )
 
-# === Cálculo
+# === Cálculo robusto
 if st.button("🧮 Calcular Pontuação"):
     indicadores_validos = [col for col in df.columns if col in pesos]
 
-    df["Pontuação Total"] = df[indicadores_validos].apply(
-        lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in indicadores_validos), axis=1
-    )
+    def calcular_pontuacao(row):
+        return sum(
+            float(pd.to_numeric(row[col], errors="coerce") or 0) * float(pesos.get(col, 0))
+            for col in indicadores_validos
+        )
+
+    df["Pontuação Total"] = df.apply(calcular_pontuacao, axis=1)
 
     st.subheader("📊 Pontuação Final por Docente")
     st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
@@ -123,7 +132,10 @@ if st.button("🧮 Calcular Pontuação"):
         if tipo_cols:
             tipo_label = f"Tipo {tipo} Total"
             df[tipo_label] = df[tipo_cols].apply(
-                lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1
+                lambda row: sum(
+                    float(pd.to_numeric(row[col], errors="coerce") or 0) * float(pesos.get(col, 0))
+                    for col in tipo_cols
+                ), axis=1
             )
             tipo_totais.append(tipo_label)
 
