@@ -8,7 +8,7 @@ from io import BytesIO
 
 st.title("📄 Barema - Produção Científica - UESC")
 
-# === Lista de docentes (exemplo)
+# === Lista de docentes
 dados_docentes = [
     {"CPF": "78209587749", "Nome": "andre", "DataNascimento": "01011970"},
     {"CPF": "03733046765", "Nome": "bruno", "DataNascimento": "01021970"},
@@ -59,8 +59,6 @@ if not uploaded_file:
 # === Carrega e limpa os dados do CSV
 pesos_df = pd.read_csv(uploaded_file)
 pesos_df.columns = pesos_df.columns.str.strip().str.lower()
-
-# 🔧 CORREÇÃO DO TIPO: converte para int → str
 pesos_df["tipo"] = (
     pd.to_numeric(pesos_df["tipo"], errors="coerce")
     .fillna(0)
@@ -101,12 +99,10 @@ opcoes_tipo = ["0", "1", "2", "3"]
 for _, row in pesos_df.iterrows():
     indicador = row["indicador"]
     col1, col2 = st.columns([0.6, 0.4])
-
     with col1:
         pesos[indicador] = st.number_input(
             f"Peso - {indicador}", value=float(row["peso"]), step=0.1, key=f"peso_{indicador}"
         )
-
     with col2:
         tipo_padrao = row["tipo"] if row["tipo"] in opcoes_tipo else "0"
         tipos[indicador] = st.radio(
@@ -116,7 +112,13 @@ for _, row in pesos_df.iterrows():
 
 # === Cálculo robusto
 if st.button("🧮 Calcular Pontuação"):
-    indicadores_validos = [col for col in df.columns if col in pesos]
+    indicadores_validos = list(set(df.columns) & set(pesos.keys()))
+
+    # Diagnóstico útil
+    st.subheader("🧪 Diagnóstico de Indicadores")
+    st.markdown(f"- 🔢 **Indicadores no DataFrame**: `{len(df.columns)}`")
+    st.markdown(f"- 🎯 **Indicadores no CSV**: `{len(pesos)}`")
+    st.markdown(f"- ✅ **Indicadores utilizados no cálculo**: `{len(indicadores_validos)}`")
 
     def calcular_pontuacao(row):
         return sum(
