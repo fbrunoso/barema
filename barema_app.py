@@ -93,7 +93,7 @@ st.subheader("📊 Pontuação Final por Docente")
 if "Pontuação Total" in df.columns:
     st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
 else:
-    st.warning("⚠️ Não foi possível calcular a pontuação total. Verifique os dados e os pesos atribuídos."), use_container_width=True)
+    st.warning("⚠️ Não foi possível calcular a pontuação total. Verifique os dados e os pesos atribuídos.")
 
 # Botão para download da planilha completa
 towrite = BytesIO()
