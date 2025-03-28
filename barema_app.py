@@ -117,9 +117,13 @@ st.markdown("Defina abaixo o peso e o tipo (1, 2, 3) de cada indicador. Use 0 pa
 
 opcoes_tipo = ["0", "1", "2", "3"]
 
+# Lista de colunas que não devem receber configuração de peso/tipo
+colunas_ignoradas = ["Nome", "cpf", "datanascimento", "nacionalidade", "paisnascimento"]
+
 for coluna in df.columns:
-    if coluna == "Nome":
-        continue  # pula a coluna Nome
+    if coluna.lower() in [c.lower() for c in colunas_ignoradas]:
+        continue  # pula campos de identificação e controle
+
 
     cols = st.columns([0.6, 0.4])
     with cols[0]:
