@@ -6,6 +6,7 @@ import requests
 import pandas as pd
 import json
 from io import BytesIO
+import os
 
 st.title("📄 Planilha Completa de Produção Científica - UESC")
 
@@ -74,38 +75,43 @@ df = df[colunas_ordenadas]
 
 st.success("✅ Planilha completa gerada com sucesso!")
 
-# Campo para inserir pesos
-st.subheader("⚖️ Atribuição de Pesos")
+# Interface de configuração de pesos
+st.subheader("⚙️ Configuração de Pesos")
+st.markdown("Você pode carregar pesos de um arquivo ou definir manualmente abaixo.")
+
 pesos = {}
-for coluna in df.columns:
-    if coluna != "Nome":
-        pesos[coluna] = st.number_input(f"Peso para {coluna}", value=1.0, step=0.1, key=f"peso_{coluna}")
+pesos_default = {col: 0.0 for col in df.columns if col != "Nome"}
 
-# Cálculo da pontuação total para todos os docentes
-try:
-    colunas_numericas = [col for col in df.columns if col != "Nome" and pd.api.types.is_numeric_dtype(df[col])]
-    df["Pontuação Total"] = df[colunas_numericas].apply(
-        lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
-    )
-except Exception as e:
-    st.error(f"Erro no cálculo da pontuação total: {e}")
-
-# Exibe resultado final
-st.subheader("📊 Pontuação Final por Docente")
-if "Pontuação Total" in df.columns:
-    st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+uploaded_pesos = st.file_uploader("📤 Importar planilha de pesos (.csv ou .xlsx)", type=["csv", "xlsx"])
+if uploaded_pesos:
+    if uploaded_pesos.name.endswith(".csv"):
+        pesos_df = pd.read_csv(uploaded_pesos)
+    else:
+        pesos_df = pd.read_excel(uploaded_pesos)
+    for _, row in pesos_df.iterrows():
+        pesos[row["Indicador"]] = row["Peso"]
 else:
-    st.warning("⚠️ Não foi possível calcular a pontuação total. Verifique os dados e os pesos atribuídos.")
+    for coluna in df.columns:
+        if coluna != "Nome":
+            pesos[coluna] = st.number_input(f"Peso para {coluna}", value=0.0, step=0.1, key=f"peso_{coluna}")
 
-# Botão para download da planilha completa
-# Também salvar os pesos usados
-pesos_df = pd.DataFrame(list(pesos.items()), columns=["Indicador", "Peso"])
+# Botão para calcular
+if st.button("🧮 Calcular Pontuação"):
+    try:
+        colunas_numericas = [col for col in df.columns if col != "Nome" and pd.api.types.is_numeric_dtype(df[col])]
+        df["Pontuação Total"] = df[colunas_numericas].apply(
+            lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
+        )
+        st.subheader("📊 Pontuação Final por Docente")
+        st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+    except Exception as e:
+        st.error(f"Erro no cálculo da pontuação total: {e}")
 
-# Cria planilha com duas abas
-towrite = BytesIO()
-with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
-    df.to_excel(writer, index=False, sheet_name="Produção")
-    pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
-
-towrite.seek(0)
-st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
+    # Botão para download da planilha completa
+    pesos_df = pd.DataFrame(list(pesos.items()), columns=["Indicador", "Peso"])
+    towrite = BytesIO()
+    with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name="Produção")
+        pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
+    towrite.seek(0)
+    st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
