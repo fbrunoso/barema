@@ -99,8 +99,12 @@ try:
 except FileNotFoundError:
     cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv")
 
-# Trata NaN e converte tudo para string sem espaços
-cache_df["Tipo"] = cache_df["Tipo"].fillna("0").astype(str).str.strip()
+# Trata valores da coluna Tipo: converte NaN e float (ex: 2.0) para string inteira (ex: "2")
+cache_df["Tipo"] = (
+    cache_df["Tipo"]
+    .fillna("0")
+    .apply(lambda x: str(int(float(x))) if str(x).replace('.', '', 1).isdigit() else "0")
+)
 
 for _, row in cache_df.iterrows():
     pesos_cache[row["Indicador"]] = row["Peso"]
@@ -127,25 +131,15 @@ for coluna in df.columns:
         )
     with cols[1]:
         raw_tipo = tipos_cache.get(coluna, "0")
-
         try:
-            # Tenta converter para float, depois int, depois str
             tipo_num = int(float(raw_tipo))
             tipo_padrao = str(tipo_num)
         except:
-            # Se falhar, garante que seja string limpa
-            tipo_padrao = str(raw_tipo).strip().lower()
-
-        opcoes_tipo = ["0", "1", "2", "3"]
+            tipo_padrao = "0"
 
         if tipo_padrao not in opcoes_tipo:
             st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
             tipo_padrao = "0"
-
-        # Segurança máxima antes de exibir
-        assert tipo_padrao in opcoes_tipo, f"Valor inesperado em tipo_padrao: {tipo_padrao}"
-        
-        st.write(f"[DEBUG] Coluna: {coluna}, tipo_padrao: '{tipo_padrao}', opções: {opcoes_tipo}")
 
         tipos[coluna] = st.radio(
             f"Tipo - {coluna}",
@@ -154,7 +148,6 @@ for coluna in df.columns:
             key=f"tipo_{coluna}_{coluna}",
             value=tipo_padrao
         )
-
 
 if st.button("🧮 Calcular Pontuação"):
     pesos_df = pd.DataFrame({
