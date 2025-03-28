@@ -8,6 +8,7 @@ from io import BytesIO
 from pathlib import Path
 from fpdf import FPDF
 import datetime
+import os
 
 st.title("📄 Barema - Produção Científica - UESC")
 
@@ -50,6 +51,12 @@ def flatten_json(y):
             out[name[:-1]] = x
     flatten(y)
     return out
+
+# === Carregamento de pesos e tipos ===
+PESOS_PATH = "pesos_tipos_corrigido.csv"
+pesos_df = pd.read_csv(PESOS_PATH)
+pesos = dict(zip(pesos_df["Indicador"], pesos_df["Peso"]))
+tipos = dict(zip(pesos_df["Indicador"], pesos_df["Tipo"].astype(str)))
 
 # === Geração de relatório individual em PDF
 def gerar_relatorio_pdf(flat, pesos, tipos):
@@ -113,6 +120,27 @@ if docente_teste and st.sidebar.button("📄 Gerar PDF de Avaliação"):
     with st.spinner("Consultando e gerando relatório..."):
         dados = consultar_dados(docente_teste)
         flat = flatten_json(dados)
-        pdf_bytes = gerar_relatorio_pdf(flat, pesos, tipos)
+        pdf_bytes = gerar_relatorio_pdf(flat, pesos=pesos, tipos=tipos)
         st.sidebar.success("✅ PDF gerado com sucesso!")
         st.sidebar.download_button("📥 Baixar PDF", data=pdf_bytes, file_name="avaliacao_individual.pdf", mime="application/pdf")
+
+# === Geração em lote para todos os docentes ===
+st.subheader("📦 Gerar PDFs para todos os docentes")
+if st.button("📁 Gerar e baixar todos os relatórios PDF"):
+    with st.spinner("Gerando relatórios em lote..."):
+        arquivos = []
+        for docente in dados_docentes:
+            dados = consultar_dados(docente)
+            flat = flatten_json(dados)
+            pdf_bytes = gerar_relatorio_pdf(flat, pesos=pesos, tipos=tipos)
+            arquivos.append((docente['Nome'], pdf_bytes))
+
+        from zipfile import ZipFile
+        zip_buffer = BytesIO()
+        with ZipFile(zip_buffer, "w") as zipf:
+            for nome, content in arquivos:
+                zipf.writestr(f"{nome}_avaliacao.pdf", content)
+        zip_buffer.seek(0)
+
+        st.success("✅ Todos os PDFs foram gerados!")
+        st.download_button("📦 Baixar ZIP com os relatórios", data=zip_buffer, file_name="avaliacoes_uesc.zip", mime="application/zip")
