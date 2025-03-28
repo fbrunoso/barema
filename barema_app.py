@@ -96,10 +96,19 @@ df = df[colunas_ordenadas]
 
 st.success("✅ Planilha completa gerada com sucesso!")
 
-# Interface de configuração de pesos
-
-# Interface de configuração de pesos
+# Interface de configuração de pesos e tipos
 st.subheader("⚙️ Configuração de Pesos e Tipos")
+pesos = {}
+tipos = {}
+st.markdown("Defina abaixo o peso e o tipo (1, 2, 3) de cada indicador.")
+
+for coluna in df.columns:
+    if coluna != "Nome":
+        cols = st.columns([0.6, 0.4])
+        with cols[0]:
+            pesos[coluna] = st.number_input(f"Peso - {coluna}", value=0.0, step=0.1, key=f"peso_{coluna}")
+        with cols[1]:
+            tipos[coluna] = st.radio("Tipo", options=["", "1", "2", "3"], horizontal=True, key=f"tipo_{coluna}")
 
 # Botão para calcular
 
