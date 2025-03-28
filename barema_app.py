@@ -97,6 +97,13 @@ df = df[colunas_ordenadas]
 st.success("✅ Planilha completa gerada com sucesso!")
 
 # Interface de configuração de pesos
+
+# Tipos por indicador: 1, 2 ou 3
+st.subheader("📚 Classificação por Tipo (1, 2, 3)")
+tipos = {}
+for coluna in df.columns:
+    if coluna != "Nome":
+        tipos[coluna] = st.selectbox(f"Tipo para {coluna}", options=["", "1", "2", "3"], key=f"tipo_{coluna}")
 st.subheader("⚙️ Configuração de Pesos")
 st.markdown("Você pode carregar pesos de um arquivo ou definir manualmente abaixo.")
 
@@ -117,6 +124,10 @@ else:
             pesos[coluna] = st.number_input(f"Peso para {coluna}", value=0.0, step=0.1, key=f"peso_{coluna}")
 
 # Botão para calcular
+
+    # Classificação por tipo no DataFrame de pesos
+    pesos_df["Tipo"] = pesos_df["Indicador"].map(tipos)
+
 if st.button("🧮 Calcular Pontuação"):
     try:
         colunas_numericas = [col for col in df.columns if col != "Nome" and pd.api.types.is_numeric_dtype(df[col])]
@@ -125,6 +136,15 @@ if st.button("🧮 Calcular Pontuação"):
         )
         st.subheader("📊 Pontuação Final por Docente")
         st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+
+        # Soma por tipo
+        for tipo in ["1", "2", "3"]:
+            tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if str(row["Tipo"]) == tipo]
+            if tipo_cols:
+                df[f"Tipo {tipo} Total"] = df[tipo_cols].apply(lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1)
+        st.subheader("📈 Totais por Tipo")
+        cols_to_show = ["Nome"] + [col for col in df.columns if col.startswith("Tipo ")] + ["Pontuação Total"]
+        st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True), use_container_width=True)
     except Exception as e:
         st.error(f"Erro no cálculo da pontuação total: {e}")
 
@@ -136,3 +156,4 @@ if st.button("🧮 Calcular Pontuação"):
         pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
     towrite.seek(0)
     st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
+
