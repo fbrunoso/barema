@@ -83,7 +83,7 @@ for coluna in df.columns:
 
 # Cálculo da pontuação total para todos os docentes
 try:
-    colunas_numericas = [col for col in df.columns if col != "Nome"]
+    colunas_numericas = [col for col in df.columns if col != "Nome" and pd.api.types.is_numeric_dtype(df[col])]
     df["Pontuação Total"] = df[colunas_numericas].apply(
         lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
     )
