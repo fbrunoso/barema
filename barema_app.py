@@ -27,6 +27,10 @@ def consultar_dados(docente):
         "dataNascimento": docente["DataNascimento"],
         "paisNascimento": "Brasil",
         "nacionalidade": "brasileira",
+        "filtro": {
+            "anoInicio": 2000,
+            "anoFim": 2025
+        },
         "downloadXml": 0
     }
 
