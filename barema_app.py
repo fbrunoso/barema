@@ -121,8 +121,10 @@ for coluna in df.columns:
                 key=f"peso_{coluna}"
             )
         with cols[1]:
-            tipo_padrao = str(tipos_cache.get(coluna, "0")).strip()
+            tipo_padrao = tipos_cache.get(coluna, "0")
+            tipo_padrao = str(tipo_padrao).strip()
             if tipo_padrao not in opcoes_tipo:
+                st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
                 tipo_padrao = "0"
             tipos[coluna] = st.radio(
                 f"Tipo - {coluna}",
