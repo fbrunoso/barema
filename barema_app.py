@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import json
 from io import BytesIO
+import plotly.express as px
 
 st.set_page_config(page_title="Dashboard Produção Docente - UESC", layout="wide")
 st.title("📊 Dashboard de Produção Científica - UESC (Teste)")
@@ -26,12 +27,6 @@ def consultar_dados(docente):
         "dataNascimento": docente["DataNascimento"],
         "paisNascimento": "Brasil",
         "nacionalidade": "brasileira",
-        "filtro": {
-            "areaAvaliacaoQualis": 1,
-            "anoInicio": 2021,
-            "anoFim": 2025,
-            "educacaoPopularizacaoCeT": 1
-        },
         "downloadXml": 0
     }
 
@@ -46,32 +41,34 @@ dados_todos = []
 for docente in dados_docentes:
     with st.spinner(f"🔍 Buscando dados para {docente['Nome'].capitalize()}..."):
         dados = consultar_dados(docente)
-        st.expander(f"📄 JSON bruto - {docente['Nome'].capitalize()}").json(dados)
         dados["nome"] = docente["Nome"].capitalize()
         dados_todos.append(dados)
+        st.expander(f"📄 JSON bruto - {docente['Nome'].capitalize()}").json(dados)
 
 # Criação do DataFrame consolidado
 linhas = []
 for d in dados_todos:
+    prod_bib = d.get("producaoBibliografica", {})
+    prod_tec = d.get("producaoTecnica", {})
+    orient = d.get("orientacoes", {})
+    proj = d.get("projetos", {})
+
     linhas.append({
         "Nome": d.get("nome", "-"),
-        "Artigos em Periódicos": d.get("producaoBibliografica", {}).get("artigosEmPeriodicos", 0),
-        "Trabalhos em Anais": d.get("producaoBibliografica", {}).get("trabalhosEmAnais", 0),
-        "Livros": d.get("producaoBibliografica", {}).get("livros", 0),
-        "Capítulos": d.get("producaoBibliografica", {}).get("capitulos", 0),
-        "Software": d.get("producaoTecnica", {}).get("software", 0),
-        "Patentes": d.get("producaoTecnica", {}).get("patente", 0),
-        "Orientações Concluídas": d.get("orientacoes", {}).get("concluidas", 0),
-        "Projetos": d.get("projetos", {}).get("total", 0)
+        "Artigos em Periódicos": prod_bib.get("artigosEmPeriodicos", {}).get("total", 0),
+        "Trabalhos em Anais": prod_bib.get("trabalhosEmAnais", {}).get("total", 0),
+        "Livros": prod_bib.get("livros", {}).get("total", 0),
+        "Capítulos": prod_bib.get("capitulos", {}).get("total", 0),
+        "Software": prod_tec.get("software", {}).get("total", 0),
+        "Patentes": prod_tec.get("patente", {}).get("total", 0),
+        "Orientações Concluídas": orient.get("concluidas", {}).get("total", 0),
+        "Projetos": proj.get("total", 0)
     })
 
 df = pd.DataFrame(linhas)
 
 st.subheader("📊 Comparativo de Produção Científica")
 st.dataframe(df, use_container_width=True)
-
-# Gráfico interativo
-import plotly.express as px
 
 st.subheader("📈 Produção por Tipo")
 coluna_selecionada = st.selectbox("Selecione o tipo de produção:", df.columns[1:])
