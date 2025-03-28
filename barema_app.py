@@ -97,6 +97,11 @@ try:
 except FileNotFoundError:
     cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv")
 
+st.subheader("🧪 Diagnóstico: Indicadores encontrados vs CSV")
+st.write("📌 Colunas do DataFrame extraído:", df.columns.tolist())
+st.write("📌 Indicadores no CSV:", list(pesos.keys()))
+
+
 # Corrige a coluna Tipo: transforma float/string/NaN em "0", "1", "2", "3"
 cache_df["Tipo"] = (
     cache_df["Tipo"]
