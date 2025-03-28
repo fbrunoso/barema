@@ -1,12 +1,11 @@
 import streamlit as st
 import requests
-import pandas as pd
-from io import BytesIO
 import json
 
 st.set_page_config(page_title="Barema Orientador - Edital IC 2025", layout="centered")
 st.title("🔍 Consulta de Produção - Edital IC 2025")
 
+# Inputs do usuário
 cpf = st.text_input("CPF (sem pontos ou traços):")
 nome = st.text_input("Nome completo:")
 data_nasc = st.text_input("Data de nascimento (DDMMAAAA):", placeholder="Ex: 01011990")
@@ -40,30 +39,23 @@ if st.button("Buscar dados Lattes"):
             response = requests.post(url, json=payload, headers=headers)
 
         if response.status_code == 200:
-            data = response.json()
-            st.subheader("🔍 Estrutura completa da resposta (JSON):")
-            st.json(data)
-
-            # Tenta normalizar com campos aninhados
             try:
-                df = pd.json_normalize(data, sep='_')
-                df_t = df.T
-                df_t.columns = ['Valor']
-                st.success("Consulta realizada com sucesso!")
-                st.subheader("📊 Resultado da Consulta")
-                st.dataframe(df_t)
+                data = response.json()
+                st.success("✅ Consulta realizada com sucesso!")
 
-                # Download Excel
-                towrite = BytesIO()
-                df.to_excel(towrite, index=False, sheet_name='ResultadoCompleto')
-                towrite.seek(0)
-                st.download_button("📥 Baixar resultado completo (Excel)", towrite, file_name="resultado_completo_ic2025.xlsx")
+                st.subheader("📄 JSON completo retornado pelo WS:")
+                st.json(data)
 
-                # Download JSON
-                st.download_button("📥 Baixar JSON completo", data=json.dumps(data, indent=2), file_name="resultado_ic2025.json")
+                # Botão opcional para baixar JSON
+                st.download_button(
+                    label="📥 Baixar JSON completo",
+                    data=json.dumps(data, indent=2),
+                    file_name="resultado_ic2025.json",
+                    mime="application/json"
+                )
 
             except Exception as e:
-                st.error(f"Erro ao processar os dados: {e}")
+                st.error(f"Erro ao processar a resposta JSON: {e}")
         else:
             st.error(f"Erro {response.status_code} ao consultar o WS: {response.text}")
 
