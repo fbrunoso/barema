@@ -98,13 +98,31 @@ st.success("✅ Planilha completa gerada com sucesso!")
 
 # Interface de configuração de pesos
 
-# Tipos por indicador: 1, 2 ou 3
-st.subheader("📚 Classificação por Tipo (1, 2, 3)")
+# Interface de configuração de pesos
+st.subheader("⚙️ Configuração de Pesos e Tipos")
+st.markdown("Você pode carregar pesos de um arquivo ou definir manualmente abaixo.")
+
+pesos = {}
 tipos = {}
-for coluna in df.columns:
-    if coluna != "Nome":
-        tipos[coluna] = st.selectbox(f"Tipo para {coluna}", options=["", "1", "2", "3"], key=f"tipo_{coluna}")
-st.subheader("⚙️ Configuração de Pesos")
+pesos_default = {col: 0.0 for col in df.columns if col != "Nome"}
+
+uploaded_pesos = st.file_uploader("📤 Importar planilha de pesos (.csv ou .xlsx)", type=["csv", "xlsx"])
+if uploaded_pesos:
+    if uploaded_pesos.name.endswith(".csv"):
+        pesos_df = pd.read_csv(uploaded_pesos)
+    else:
+        pesos_df = pd.read_excel(uploaded_pesos)
+    for _, row in pesos_df.iterrows():
+        pesos[row["Indicador"]] = row["Peso"]
+        tipos[row["Indicador"]] = str(row.get("Tipo", ""))
+else:
+    for coluna in df.columns:
+        if coluna != "Nome":
+            cols = st.columns([0.6, 0.4])
+            with cols[0]:
+                pesos[coluna] = st.number_input(f"Peso - {coluna}", value=0.0, step=0.1, key=f"peso_{coluna}")
+            with cols[1]:
+                tipos[coluna] = st.radio(f"Tipo", options=["", "1", "2", "3"], horizontal=True, key=f"tipo_{coluna}")
 st.markdown("Você pode carregar pesos de um arquivo ou definir manualmente abaixo.")
 
 pesos = {}
