@@ -114,17 +114,20 @@ for _, row in pesos_df.iterrows():
 if st.button("🧮 Calcular Pontuação"):
     indicadores_validos = list(set(df.columns) & set(pesos.keys()))
 
-    # Diagnóstico útil
+    # Diagnóstico
     st.subheader("🧪 Diagnóstico de Indicadores")
     st.markdown(f"- 🔢 **Indicadores no DataFrame**: `{len(df.columns)}`")
     st.markdown(f"- 🎯 **Indicadores no CSV**: `{len(pesos)}`")
     st.markdown(f"- ✅ **Indicadores utilizados no cálculo**: `{len(indicadores_validos)}`")
 
     def calcular_pontuacao(row):
-        return sum(
-            float(pd.to_numeric(row[col], errors="coerce") or 0) * float(pesos.get(col, 0))
-            for col in indicadores_validos
-        )
+        total = 0
+        for col in indicadores_validos:
+            valor = pd.to_numeric(row[col], errors="coerce")
+            valor = 0 if pd.isna(valor) else float(valor)
+            peso = float(pesos.get(col, 0))
+            total += valor * peso
+        return total
 
     df["Pontuação Total"] = df.apply(calcular_pontuacao, axis=1)
 
@@ -138,7 +141,8 @@ if st.button("🧮 Calcular Pontuação"):
             tipo_label = f"Tipo {tipo} Total"
             df[tipo_label] = df[tipo_cols].apply(
                 lambda row: sum(
-                    float(pd.to_numeric(row[col], errors="coerce") or 0) * float(pesos.get(col, 0))
+                    pd.to_numeric(row[col], errors="coerce") * float(pesos.get(col, 0))
+                    if pd.notna(pd.to_numeric(row[col], errors="coerce")) else 0
                     for col in tipo_cols
                 ), axis=1
             )
@@ -162,9 +166,16 @@ if st.button("🧮 Calcular Pontuação"):
     st.download_button("📁 Baixar pesos e tipos (CSV)", data=pesos_export.to_csv(index=False).encode('utf-8'),
                        file_name="pesos_tipos_atualizado.csv", mime="text/csv")
 
+    # 🔄 Exportação da planilha completa com todos os dados
     towrite = BytesIO()
     with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name="Produção")
-        pesos_export.to_excel(writer, index=False, sheet_name="Pesos")
+        df.to_excel(writer, index=False, sheet_name="Produção Completa")
+        pesos_export.to_excel(writer, index=False, sheet_name="Pesos e Tipos")
     towrite.seek(0)
-    st.download_button("📥 Baixar Excel completo", towrite, file_name="producao_uesc_completa.xlsx")
+
+    st.download_button(
+        "📥 Baixar Excel com toda a produção",
+        towrite,
+        file_name="producao_uesc_completa.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
