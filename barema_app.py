@@ -168,13 +168,16 @@ if st.button("🧮 Calcular Pontuação"):
         file_name="pesos_tipos.csv",
         mime="text/csv"
     )
-    pesos_df = pd.DataFrame(list(pesos.items()), columns=["Indicador", "Peso"])
+    # pesos_df sobrescrito desnecessariamente — REMOVIDO
     towrite = BytesIO()
     with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name="Produção")
         pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
     towrite.seek(0)
     st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
+
+    # Salva pesos e tipos no cache
+    pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
 
     # Salva pesos e tipos no cache
     pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
