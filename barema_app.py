@@ -103,10 +103,13 @@ st.subheader("⚙️ Configuração de Pesos e Tipos")
 
 # Botão para calcular
 
-    # Classificação por tipo no DataFrame de pesos
-    pesos_df["Tipo"] = pesos_df["Indicador"].map(tipos)
-
 if st.button("🧮 Calcular Pontuação"):
+    # Classificação por tipo no DataFrame de pesos
+    pesos_df = pd.DataFrame({
+        "Indicador": list(pesos.keys()),
+        "Peso": [pesos[k] for k in pesos.keys()],
+        "Tipo": [tipos.get(k, "") for k in pesos.keys()]
+    })
     try:
         colunas_numericas = [col for col in df.columns if col != "Nome" and pd.api.types.is_numeric_dtype(df[col])]
         df["Pontuação Total"] = df[colunas_numericas].apply(
