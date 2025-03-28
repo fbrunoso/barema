@@ -124,7 +124,7 @@ for coluna in df.columns:
                 options=["", "1", "2", "3"],
                 horizontal=True,
                 key=f"tipo_{coluna}",
-                index=["", "1", "2", "3"].index(tipo_padrao) if tipo_padrao in ["", "1", "2", "3"] else 0
+                value=tipo_padrao if tipo_padrao in ["", "1", "2", "3"] else ""
             )
 
 if st.button("🧮 Calcular Pontuação"):
