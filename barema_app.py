@@ -143,4 +143,25 @@ if st.button("🧮 Calcular Pontuação"):
         df["Pontuação Total"] = df[colunas_numericas].apply(
             lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
         )
-        st.subheader("📊 Pontuação Final
+        st.subheader("📤 Exportar Pesos e Tipos")
+    pesos_export = pd.DataFrame({
+        "Indicador": list(pesos.keys()),
+        "Peso": [pesos[k] for k in pesos.keys()],
+        "Tipo": [tipos.get(k, "0") for k in pesos.keys()]
+    })
+    pesos_csv = pesos_export.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📁 Baixar pesos e tipos em CSV",
+        data=pesos_csv,
+        file_name="pesos_tipos.csv",
+        mime="text/csv"
+    )
+
+    towrite = BytesIO()
+    with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name="Produção")
+        pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
+    towrite.seek(0)
+    st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
+
+    pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
