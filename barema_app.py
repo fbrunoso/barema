@@ -93,6 +93,7 @@ st.success("✅ Planilha completa gerada com sucesso!")
 PESOS_CACHE_PATH = "pesos_padrao.csv"
 pesos_cache = {}
 tipos_cache = {}
+
 try:
     cache_df = pd.read_csv(PESOS_CACHE_PATH)
 except FileNotFoundError:
@@ -100,12 +101,14 @@ except FileNotFoundError:
 
 for _, row in cache_df.iterrows():
     pesos_cache[row["Indicador"]] = row["Peso"]
-    tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
+    tipos_cache[row["Indicador"]] = str(row.get("Tipo", "0")).strip()
 
 st.subheader("⚙️ Configuração de Pesos e Tipos")
 pesos = {}
 tipos = {}
-st.markdown("Defina abaixo o peso e o tipo (1, 2, 3) de cada indicador.")
+st.markdown("Defina abaixo o peso e o tipo (1, 2, 3) de cada indicador. Use 0 para indicadores sem tipo.")
+
+opcoes_tipo = ["0", "1", "2", "3"]
 
 for coluna in df.columns:
     if coluna != "Nome":
@@ -118,70 +121,26 @@ for coluna in df.columns:
                 key=f"peso_{coluna}"
             )
         with cols[1]:
-            tipo_padrao = tipos_cache.get(coluna, "")
-            opcoes_tipo = ["", "1", "2", "3"]
-            valor_default = tipo_padrao if tipo_padrao in opcoes_tipo else ""
+            tipo_padrao = str(tipos_cache.get(coluna, "0")).strip()
+            if tipo_padrao not in opcoes_tipo:
+                tipo_padrao = "0"
             tipos[coluna] = st.radio(
                 f"Tipo - {coluna}",
                 options=opcoes_tipo,
                 horizontal=True,
                 key=f"tipo_{coluna}",
-                value=valor_default
+                value=tipo_padrao
             )
 
 if st.button("🧮 Calcular Pontuação"):
     pesos_df = pd.DataFrame({
         "Indicador": list(pesos.keys()),
         "Peso": [pesos[k] for k in pesos.keys()],
-        "Tipo": [tipos.get(k, "") for k in pesos.keys()]
+        "Tipo": [tipos.get(k, "0") for k in pesos.keys()]
     })
     try:
         colunas_numericas = [col for col in df.columns if col != "Nome" and pd.api.types.is_numeric_dtype(df[col])]
         df["Pontuação Total"] = df[colunas_numericas].apply(
             lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
         )
-        st.subheader("📊 Pontuação Final por Docente")
-        st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
-
-        tipo_totais = []
-        for tipo in ["1", "2", "3"]:
-            tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if str(row["Tipo"]) == tipo]
-            if tipo_cols:
-                tipo_label = f"Tipo {tipo} Total"
-                df[tipo_label] = df[tipo_cols].apply(
-                    lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1
-                )
-                tipo_totais.append(tipo_label)
-
-        if tipo_totais:
-            st.subheader("📈 Totais por Tipo")
-            cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
-            st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
-        else:
-            st.info("ℹ️ Nenhum tipo foi definido. Defina pelo menos um tipo (1, 2 ou 3) para ver os totais por tipo.")
-
-    except Exception as e:
-        st.error(f"Erro no cálculo da pontuação total: {e}")
-
-    st.subheader("📤 Exportar Pesos e Tipos")
-    pesos_export = pd.DataFrame({
-        "Indicador": list(pesos.keys()),
-        "Peso": [pesos[k] for k in pesos.keys()],
-        "Tipo": [tipos.get(k, "") for k in pesos.keys()]
-    })
-    pesos_csv = pesos_export.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📁 Baixar pesos e tipos em CSV",
-        data=pesos_csv,
-        file_name="pesos_tipos.csv",
-        mime="text/csv"
-    )
-
-    towrite = BytesIO()
-    with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name="Produção")
-        pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
-    towrite.seek(0)
-    st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
-
-    pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
+        st.subheader("📊 Pontuação Final
