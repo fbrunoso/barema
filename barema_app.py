@@ -90,7 +90,10 @@ except Exception as e:
 
 # Exibe resultado final
 st.subheader("📊 Pontuação Final por Docente")
-st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+if "Pontuação Total" in df.columns:
+    st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+else:
+    st.warning("⚠️ Não foi possível calcular a pontuação total. Verifique os dados e os pesos atribuídos."), use_container_width=True)
 
 # Botão para download da planilha completa
 towrite = BytesIO()
