@@ -52,9 +52,24 @@ def flatten_json(y):
     flatten(y)
     return out
 
-# === Carregamento de pesos e tipos ===
-PESOS_PATH = "pesos_tipos_corrigido.csv"
-pesos_df = pd.read_csv(PESOS_PATH)
+# === Upload ou uso de arquivo de pesos e tipos ===
+st.sidebar.subheader("⚙️ Pesos e Tipos")
+
+uploaded_csv = st.sidebar.file_uploader("📁 Envie o arquivo de pesos e tipos (.csv)", type="csv")
+
+if uploaded_csv:
+    pesos_df = pd.read_csv(uploaded_csv)
+    st.sidebar.success("Arquivo de pesos carregado com sucesso!")
+else:
+    # Tenta carregar localmente
+    PESOS_PATH = "pesos_tipos_corrigido.csv"
+    if Path(PESOS_PATH).exists():
+        pesos_df = pd.read_csv(PESOS_PATH)
+        st.sidebar.info("Usando arquivo local de pesos.")
+    else:
+        st.sidebar.error("❌ Nenhum arquivo de pesos encontrado.")
+        st.stop()
+
 pesos = dict(zip(pesos_df["Indicador"], pesos_df["Peso"]))
 tipos = dict(zip(pesos_df["Indicador"], pesos_df["Tipo"].astype(str)))
 
