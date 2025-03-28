@@ -102,8 +102,14 @@ PESOS_CACHE_PATH = "pesos_padrao.csv"
 # Carrega pesos e tipos do cache se existir
 pesos_cache = {}
 tipos_cache = {}
-if os.path.exists(PESOS_CACHE_PATH):
+try:
     cache_df = pd.read_csv(PESOS_CACHE_PATH)
+except FileNotFoundError:
+    cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv")
+
+for _, row in cache_df.iterrows():
+    pesos_cache[row["Indicador"]] = row["Peso"]
+    tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
     for _, row in cache_df.iterrows():
         pesos_cache[row["Indicador"]] = row["Peso"]
         tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
@@ -143,11 +149,22 @@ if st.button("🧮 Calcular Pontuação"):
         st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
 
         # Soma por tipo
+        tipo_totais = []
         for tipo in ["1", "2", "3"]:
             tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if str(row["Tipo"]) == tipo]
             if tipo_cols:
-                df[f"Tipo {tipo} Total"] = df[tipo_cols].apply(lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1)
-        st.subheader("📈 Totais por Tipo")
+                tipo_label = f"Tipo {tipo} Total"
+                df[tipo_label] = df[tipo_cols].apply(
+                    lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1
+                )
+                tipo_totais.append(tipo_label)
+
+        if tipo_totais:
+            st.subheader("📈 Totais por Tipo")
+            cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
+            st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+        else:
+            st.info("ℹ️ Nenhum tipo foi definido. Defina pelo menos um tipo (1, 2 ou 3) para ver os totais por tipo.")
         cols_to_show = ["Nome"] + [col for col in df.columns if col.startswith("Tipo ")] + ["Pontuação Total"]
         st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
     except Exception as e:
@@ -178,7 +195,3 @@ if st.button("🧮 Calcular Pontuação"):
 
     # Salva pesos e tipos no cache
     pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
-
-    # Salva pesos e tipos no cache
-    pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
-
