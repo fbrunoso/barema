@@ -1,13 +1,14 @@
 # A linha abaixo deve ser a PRIMEIRA instrução do script
 import streamlit as st
-st.set_page_config(page_title="Planilha de Produção Científica - UESC", layout="wide")
+st.set_page_config(page_title="Barema - UESC", layout="wide")
 
 import requests
 import pandas as pd
 import json
 from io import BytesIO
+import os
 
-st.title("📄 Planilha Completa de Produção Científica - UESC")
+st.title("📄 Barema - Produção Científica - UESC")
 
 # Dados de entrada
 dados_docentes = [
@@ -17,7 +18,7 @@ dados_docentes = [
     {"CPF": "33405751268", "Nome": "jorge", "DataNascimento": "01011972"}
 ]
 
-# Função para buscar dados da API
+# === Função para buscar dados da API
 def consultar_dados(docente):
     url = 'https://www.stelaexperta.com.br/ws/totaiscv'
     headers = {'Content-Type': 'application/json'}
@@ -34,7 +35,7 @@ def consultar_dados(docente):
     response = requests.post(url, json=payload, headers=headers)
     return response.json() if response.status_code == 200 else {}
 
-# Função para achatar recursivamente o JSON
+# === Função para achatar JSON
 def flatten_json(y):
     out = {}
     def flatten(x, name=''):
@@ -49,7 +50,7 @@ def flatten_json(y):
     flatten(y)
     return out
 
-# Busca os dados
+# === Consulta dados
 campos_presentes = set()
 linhas = []
 for docente in dados_docentes:
@@ -60,7 +61,7 @@ for docente in dados_docentes:
         flat["Nome"] = docente["Nome"].capitalize()
         linhas.append(flat)
 
-# Cria o DataFrame
+# === Geração do DataFrame
 df = pd.DataFrame(linhas)
 for campo in campos_presentes:
     if campo not in df.columns:
@@ -69,102 +70,71 @@ df = df.fillna(0)
 colunas_ordenadas = ["Nome"] + [c for c in df.columns if c != "Nome"]
 df = df[colunas_ordenadas]
 
-st.success("✅ Planilha completa gerada com sucesso!")
+st.success("✅ Planilha gerada com sucesso!")
 
-# Carrega pesos e tipos
-PESOS_CACHE_PATH = "pesos_padrao.csv"
-try:
-    cache_df = pd.read_csv(PESOS_CACHE_PATH, encoding="utf-8-sig")
-except FileNotFoundError:
-    cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv", encoding="utf-8-sig")
+# === Carrega o CSV com pesos e tipos
+CSV_PATH = "/mnt/data/pesos_tipos_corrigido.csv"
+pesos_df = pd.read_csv(CSV_PATH)
+pesos_df.columns = pesos_df.columns.str.strip().str.lower()
+pesos_df["tipo"] = pesos_df["tipo"].fillna("0").astype(str)
+pesos_df["peso"] = pesos_df["peso"].fillna(0)
 
-# Diagnóstico da estrutura do CSV
-st.subheader("🧪 Estrutura real do CSV carregado")
-st.write("📌 Colunas encontradas:", list(cache_df.columns))
-st.dataframe(cache_df.head())
+# === Interface de configuração
+st.subheader("⚙️ Configuração de Pesos e Tipos")
+pesos = {}
+tipos = {}
+opcoes_tipo = ["0", "1", "2", "3"]
+for _, row in pesos_df.iterrows():
+    indicador = row["indicador"]
+    col1, col2 = st.columns([0.6, 0.4])
+    with col1:
+        pesos[indicador] = st.number_input(f"Peso - {indicador}", value=float(row["peso"]), step=0.1, key=f"peso_{indicador}")
+    with col2:
+        tipo_padrao = str(int(float(row["tipo"]))) if row["tipo"] in ["1", "2", "3"] else "0"
+        tipos[indicador] = st.radio(f"Tipo - {indicador}", options=opcoes_tipo, index=opcoes_tipo.index(tipo_padrao), horizontal=True, key=f"tipo_{indicador}")
 
-# Padroniza nomes das colunas do CSV
-cache_df.columns = cache_df.columns.str.strip().str.lower()
-
-# Renomeia para evitar erro (caso venham com nomes diferentes)
-if "indicador" in cache_df.columns and "peso" in cache_df.columns:
-    cache_df["tipo"] = cache_df["tipo"].fillna("0").apply(
-        lambda x: str(int(float(x))) if str(x).replace('.', '', 1).isdigit() else "0"
-    )
-    # Extrai dicionários
-    pesos = dict(zip(cache_df["indicador"], cache_df["peso"]))
-    tipos = dict(zip(cache_df["indicador"], cache_df["tipo"]))
-else:
-    st.error("❌ O arquivo CSV precisa conter as colunas: 'indicador', 'peso' e 'tipo'")
-    st.stop()
-
-# Diagnóstico final
-st.subheader("📋 Diagnóstico dos Indicadores")
-st.write("📌 Colunas extraídas do DataFrame:", df.columns.tolist())
-st.write("📌 Indicadores disponíveis no CSV:", list(pesos.keys()))
-
-# Filtra apenas os indicadores que existem no DataFrame
-indicadores_validos = [col for col in df.columns if col in pesos]
-st.subheader("🎯 Indicadores que serão utilizados no cálculo:")
-st.write(indicadores_validos)
-
-st.subheader("📄 Tabela de Pesos e Tipos")
-st.dataframe(cache_df, use_container_width=True)
-
-# Cálculo da pontuação
+# === Botão para calcular
 if st.button("🧮 Calcular Pontuação"):
-    pesos_df = pd.DataFrame({
-        "Indicador": indicadores_validos,
-        "Peso": [pesos[k] for k in indicadores_validos],
-        "Tipo": [tipos.get(k, "0") for k in indicadores_validos]
-    })
-    try:
-        df["Pontuação Total"] = df[indicadores_validos].apply(
-            lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in indicadores_validos), axis=1
-        )
-        st.subheader("📊 Pontuação Final por Docente")
-        st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+    indicadores_validos = [col for col in df.columns if col in pesos]
 
-        tipo_totais = []
-        for tipo in ["1", "2", "3"]:
-            tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if row["Tipo"] == tipo]
-            if tipo_cols:
-                tipo_label = f"Tipo {tipo} Total"
-                df[tipo_label] = df[tipo_cols].apply(
-                    lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1
-                )
-                tipo_totais.append(tipo_label)
+    df["Pontuação Total"] = df[indicadores_validos].apply(
+        lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in indicadores_validos),
+        axis=1
+    )
 
-        if tipo_totais:
-            st.subheader("📈 Totais por Tipo")
-            cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
-            st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
-        else:
-            st.info("ℹ️ Nenhum tipo relevante foi definido. Defina pelo menos um tipo (1, 2 ou 3) no CSV.")
+    st.subheader("📊 Pontuação Final por Docente")
+    st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
 
-    except Exception as e:
-        st.error(f"Erro no cálculo da pontuação: {e}")
+    tipo_totais = []
+    for tipo in ["1", "2", "3"]:
+        tipo_cols = [k for k, v in tipos.items() if v == tipo and k in df.columns]
+        if tipo_cols:
+            tipo_label = f"Tipo {tipo} Total"
+            df[tipo_label] = df[tipo_cols].apply(
+                lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1
+            )
+            tipo_totais.append(tipo_label)
+
+    if tipo_totais:
+        st.subheader("📈 Totais por Tipo")
+        cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
+        st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+    else:
+        st.info("ℹ️ Nenhum tipo definido como 1, 2 ou 3.")
 
     # Exportação
     st.subheader("📤 Exportar Arquivos")
     pesos_export = pd.DataFrame({
         "Indicador": list(pesos.keys()),
         "Peso": [pesos[k] for k in pesos.keys()],
-        "Tipo": [tipos.get(k, "0") for k in pesos.keys()]
+        "Tipo": [tipos[k] for k in tipos.keys()]
     })
-    st.download_button(
-        label="📁 Baixar pesos e tipos (CSV)",
-        data=pesos_export.to_csv(index=False).encode('utf-8'),
-        file_name="pesos_tipos.csv",
-        mime="text/csv"
-    )
+    st.download_button("📁 Baixar pesos e tipos (CSV)", data=pesos_export.to_csv(index=False).encode('utf-8'),
+                       file_name="pesos_tipos_atualizado.csv", mime="text/csv")
 
     towrite = BytesIO()
     with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name="Produção")
-        pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
+        pesos_export.to_excel(writer, index=False, sheet_name="Pesos")
     towrite.seek(0)
-    st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
-
-    # Salva para cache local
-    pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
+    st.download_button("📥 Baixar Excel completo", towrite, file_name="producao_uesc_completa.xlsx")
