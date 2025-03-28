@@ -73,9 +73,22 @@ colunas_ordenadas = ["Nome"] + [c for c in df.columns if c != "Nome"]
 df = df[colunas_ordenadas]
 
 st.success("✅ Planilha completa gerada com sucesso!")
-st.dataframe(df, use_container_width=True)
 
-# Botão para download
+# Campo para inserir pesos
+st.subheader("⚖️ Atribuição de Pesos")
+pesos = {}
+for coluna in df.columns:
+    if coluna != "Nome":
+        pesos[coluna] = st.number_input(f"Peso para {coluna}", value=1.0, step=0.1)
+
+# Cálculo da pontuação total para todos os docentes
+df["Pontuação Total"] = df.drop(columns=["Nome"]).apply(lambda row: sum(row[col] * pesos[col] for col in row.index), axis=1)
+
+# Exibe resultado final
+st.subheader("📊 Pontuação Final por Docente")
+st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+
+# Botão para download da planilha completa
 towrite = BytesIO()
 df.to_excel(towrite, index=False, sheet_name="Completa")
 towrite.seek(0)
