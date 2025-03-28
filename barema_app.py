@@ -47,12 +47,16 @@ def flatten_json(y):
     out = {}
 
     def flatten(x, name=''):
-        if type(x) is dict:
+        if isinstance(x, dict):
             for a in x:
                 flatten(x[a], f'{name}{a}_')
-        elif type(x) is list:
-            for i, a in enumerate(x):
-                flatten(a, f'{name}{i}_')
+        elif isinstance(x, list):
+            # Se for lista de valores simples, concatena como string
+            if all(isinstance(i, (str, int, float)) for i in x):
+                out[name[:-1]] = ', '.join(map(str, x))
+            else:
+                # Ignora listas complexas (como listas de dicionários)
+                pass
         else:
             out[name[:-1]] = x
 
