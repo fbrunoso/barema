@@ -118,7 +118,12 @@ for coluna in df.columns:
         with cols[0]:
             pesos[coluna] = st.number_input(f"Peso - {coluna}", value=pesos_cache.get(coluna, 0.0), step=0.1, key=f"peso_{coluna}")
         with cols[1]:
-            tipos[coluna] = st.radio("Tipo", options=["", "1", "2", "3"], horizontal=True, index=["", "1", "2", "3"].index(tipos_cache.get(coluna, "")), key=f"tipo_{coluna}")
+            tipo_padrao = tipos_cache.get(coluna, "")
+            try:
+                tipo_idx = ["", "1", "2", "3"].index(tipo_padrao)
+            except ValueError:
+                tipo_idx = 0
+            tipos[coluna] = st.radio("Tipo", options=["", "1", "2", "3"], horizontal=True, index=tipo_idx, key=f"tipo_{coluna}")
 
 # Botão para calcular
 
@@ -173,3 +178,4 @@ if st.button("🧮 Calcular Pontuação"):
 
     # Salva pesos e tipos no cache
     pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
+
