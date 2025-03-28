@@ -143,7 +143,30 @@ if st.button("🧮 Calcular Pontuação"):
         df["Pontuação Total"] = df[colunas_numericas].apply(
             lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
         )
-        st.subheader("📤 Exportar Pesos e Tipos")
+        st.subheader("📊 Pontuação Final por Docente")
+        st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+
+        tipo_totais = []
+        for tipo in ["1", "2", "3"]:  # ignora tipo 0
+            tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if str(row["Tipo"]) == tipo]
+            if tipo_cols:
+                tipo_label = f"Tipo {tipo} Total"
+                df[tipo_label] = df[tipo_cols].apply(
+                    lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1
+                )
+                tipo_totais.append(tipo_label)
+
+        if tipo_totais:
+            st.subheader("📈 Totais por Tipo")
+            cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
+            st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+        else:
+            st.info("ℹ️ Nenhum tipo relevante foi definido. Defina pelo menos um tipo (1, 2 ou 3) para ver os totais por tipo.")
+
+    except Exception as e:
+        st.error(f"Erro no cálculo da pontuação total: {e}")
+
+    st.subheader("📤 Exportar Pesos e Tipos")
     pesos_export = pd.DataFrame({
         "Indicador": list(pesos.keys()),
         "Peso": [pesos[k] for k in pesos.keys()],
