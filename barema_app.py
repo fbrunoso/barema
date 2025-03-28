@@ -46,6 +46,7 @@ dados_todos = []
 for docente in dados_docentes:
     with st.spinner(f"🔍 Buscando dados para {docente['Nome'].capitalize()}..."):
         dados = consultar_dados(docente)
+        st.expander(f"📄 JSON bruto - {docente['Nome'].capitalize()}").json(dados)
         dados["nome"] = docente["Nome"].capitalize()
         dados_todos.append(dados)
 
