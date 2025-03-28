@@ -1,14 +1,13 @@
 # A linha abaixo deve ser a PRIMEIRA instrução do script
 import streamlit as st
-st.set_page_config(page_title="Dashboard Produção Docente - UESC", layout="wide")
+st.set_page_config(page_title="Planilha de Produção Científica - UESC", layout="wide")
 
 import requests
 import pandas as pd
 import json
 from io import BytesIO
-import plotly.express as px
 
-st.title("📊 Dashboard de Produção Científica - UESC (Teste)")
+st.title("📄 Planilha Completa de Produção Científica - UESC")
 
 # Dados de entrada
 dados_docentes = [
@@ -42,48 +41,42 @@ def consultar_dados(docente):
     else:
         return {}
 
-# Consulta dados de todos os docentes e transforma diretamente em linhas para DataFrame
-def extrair_linha(nome, dados):
-    linha = {"Nome": nome}
-    campos = [
-        ("Artigos em Periódicos", ["producaoBibliografica", "artigosEmPeriodicos"]),
-        ("Trabalhos em Anais", ["producaoBibliografica", "trabalhosEmAnais"]),
-        ("Livros", ["producaoBibliografica", "livros"]),
-        ("Capítulos", ["producaoBibliografica", "capitulos"]),
-        ("Software", ["producaoTecnica", "software"]),
-        ("Patentes", ["producaoTecnica", "patente"]),
-        ("Orientações Concluídas", ["orientacoes", "concluidas"]),
-        ("Projetos", ["projetos"])
-    ]
-    for rotulo, caminho in campos:
-        valor = dados
-        for chave in caminho:
-            valor = valor.get(chave, {}) if isinstance(valor, dict) else {}
-        linha[rotulo] = valor.get("total", 0) if isinstance(valor, dict) else 0
-    return linha
+# Função para achatar recursivamente o JSON
+def flatten_json(y):
+    out = {}
 
+    def flatten(x, name=''):
+        if type(x) is dict:
+            for a in x:
+                flatten(x[a], f'{name}{a}_')
+        elif type(x) is list:
+            for i, a in enumerate(x):
+                flatten(a, f'{name}{i}_')
+        else:
+            out[name[:-1]] = x
+
+    flatten(y)
+    return out
+
+# Consulta dados e gera planilha completa
 linhas = []
-dados_todos = []
 for docente in dados_docentes:
     with st.spinner(f"🔍 Buscando dados para {docente['Nome'].capitalize()}..."):
         dados = consultar_dados(docente)
-        dados_todos.append({"nome": docente["Nome"].capitalize(), "dados": dados})
-        st.expander(f"📄 JSON bruto - {docente['Nome'].capitalize()}").json(dados)
-        linhas.append(extrair_linha(docente["Nome"].capitalize(), dados))
+        flat = flatten_json(dados)
+        flat["Nome"] = docente["Nome"].capitalize()
+        linhas.append(flat)
 
-# Gera DataFrame a partir das linhas
-df = pd.DataFrame(linhas)
+# Gera DataFrame a partir dos dados achatados
+df = pd.DataFrame(linhas).fillna(0)
+colunas_ordenadas = ["Nome"] + [c for c in df.columns if c != "Nome"]
+df = df[colunas_ordenadas]
 
-st.subheader("📊 Comparativo de Produção Científica")
+st.success("✅ Planilha completa gerada com sucesso!")
 st.dataframe(df, use_container_width=True)
 
-st.subheader("📈 Produção por Tipo")
-coluna_selecionada = st.selectbox("Selecione o tipo de produção:", df.columns[1:])
-fig = px.bar(df, x="Nome", y=coluna_selecionada, color="Nome", text_auto=True)
-st.plotly_chart(fig, use_container_width=True)
-
-# Botão de download do consolidado
+# Botão para download
 towrite = BytesIO()
-df.to_excel(towrite, index=False, sheet_name='ProducaoDocente')
+df.to_excel(towrite, index=False, sheet_name="Completa")
 towrite.seek(0)
-st.download_button("📥 Baixar tabela consolidada", towrite, file_name="producao_docente_uesc.xlsx")
+st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
