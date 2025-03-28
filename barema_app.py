@@ -6,11 +6,10 @@ import requests
 import pandas as pd
 import json
 from io import BytesIO
-import os
 
 st.title("📄 Barema - Produção Científica - UESC")
 
-# Dados de entrada
+# === Lista de docentes (exemplo)
 dados_docentes = [
     {"CPF": "78209587749", "Nome": "andre", "DataNascimento": "01011970"},
     {"CPF": "03733046765", "Nome": "bruno", "DataNascimento": "01021970"},
@@ -50,18 +49,33 @@ def flatten_json(y):
     flatten(y)
     return out
 
-# === Consulta dados
+# === Upload do CSV com pesos/tipos
+st.subheader("📤 Envie o arquivo de Pesos e Tipos")
+uploaded_file = st.file_uploader("CSV com as colunas: Indicador, Peso, Tipo", type="csv")
+
+if not uploaded_file:
+    st.warning("⚠️ Por favor, envie o arquivo CSV para continuar.")
+    st.stop()
+
+# === Carrega e limpa os dados do CSV
+pesos_df = pd.read_csv(uploaded_file)
+pesos_df.columns = pesos_df.columns.str.strip().str.lower()
+pesos_df["tipo"] = pesos_df["tipo"].fillna("0").astype(str)
+pesos_df["peso"] = pesos_df["peso"].fillna(0)
+
+# === Busca dados da API
+st.subheader("🔍 Coleta de Dados da API")
 campos_presentes = set()
 linhas = []
 for docente in dados_docentes:
-    with st.spinner(f"🔍 Buscando dados para {docente['Nome'].capitalize()}..."):
+    with st.spinner(f"Buscando dados para {docente['Nome'].capitalize()}..."):
         dados = consultar_dados(docente)
         flat = flatten_json(dados)
         campos_presentes.update(flat.keys())
         flat["Nome"] = docente["Nome"].capitalize()
         linhas.append(flat)
 
-# === Geração do DataFrame
+# === Criação do DataFrame principal
 df = pd.DataFrame(linhas)
 for campo in campos_presentes:
     if campo not in df.columns:
@@ -72,34 +86,32 @@ df = df[colunas_ordenadas]
 
 st.success("✅ Planilha gerada com sucesso!")
 
-# === Carrega o CSV com pesos e tipos
-CSV_PATH = "/mnt/data/pesos_tipos_corrigido.csv"
-pesos_df = pd.read_csv(CSV_PATH)
-pesos_df.columns = pesos_df.columns.str.strip().str.lower()
-pesos_df["tipo"] = pesos_df["tipo"].fillna("0").astype(str)
-pesos_df["peso"] = pesos_df["peso"].fillna(0)
-
-# === Interface de configuração
+# === Interface de configuração de pesos e tipos
 st.subheader("⚙️ Configuração de Pesos e Tipos")
 pesos = {}
 tipos = {}
 opcoes_tipo = ["0", "1", "2", "3"]
+
 for _, row in pesos_df.iterrows():
     indicador = row["indicador"]
     col1, col2 = st.columns([0.6, 0.4])
     with col1:
-        pesos[indicador] = st.number_input(f"Peso - {indicador}", value=float(row["peso"]), step=0.1, key=f"peso_{indicador}")
+        pesos[indicador] = st.number_input(
+            f"Peso - {indicador}", value=float(row["peso"]), step=0.1, key=f"peso_{indicador}"
+        )
     with col2:
         tipo_padrao = str(int(float(row["tipo"]))) if row["tipo"] in ["1", "2", "3"] else "0"
-        tipos[indicador] = st.radio(f"Tipo - {indicador}", options=opcoes_tipo, index=opcoes_tipo.index(tipo_padrao), horizontal=True, key=f"tipo_{indicador}")
+        tipos[indicador] = st.radio(
+            f"Tipo - {indicador}", options=opcoes_tipo,
+            index=opcoes_tipo.index(tipo_padrao), horizontal=True, key=f"tipo_{indicador}"
+        )
 
-# === Botão para calcular
+# === Cálculo
 if st.button("🧮 Calcular Pontuação"):
     indicadores_validos = [col for col in df.columns if col in pesos]
 
     df["Pontuação Total"] = df[indicadores_validos].apply(
-        lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in indicadores_validos),
-        axis=1
+        lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in indicadores_validos), axis=1
     )
 
     st.subheader("📊 Pontuação Final por Docente")
@@ -120,15 +132,16 @@ if st.button("🧮 Calcular Pontuação"):
         cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
         st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
     else:
-        st.info("ℹ️ Nenhum tipo definido como 1, 2 ou 3.")
+        st.info("ℹ️ Nenhum tipo relevante foi definido.")
 
-    # Exportação
-    st.subheader("📤 Exportar Arquivos")
+    # Exportações
+    st.subheader("📤 Exportar Resultados")
     pesos_export = pd.DataFrame({
         "Indicador": list(pesos.keys()),
         "Peso": [pesos[k] for k in pesos.keys()],
         "Tipo": [tipos[k] for k in tipos.keys()]
     })
+
     st.download_button("📁 Baixar pesos e tipos (CSV)", data=pesos_export.to_csv(index=False).encode('utf-8'),
                        file_name="pesos_tipos_atualizado.csv", mime="text/csv")
 
