@@ -64,16 +64,33 @@ def flatten_json(y):
     return out
 
 # Consulta dados e gera planilha completa
+campos_presentes = set()
 linhas = []
 for docente in dados_docentes:
     with st.spinner(f"🔍 Buscando dados para {docente['Nome'].capitalize()}..."):
         dados = consultar_dados(docente)
         flat = flatten_json(dados)
+        campos_presentes.update(flat.keys())
         flat["Nome"] = docente["Nome"].capitalize()
         linhas.append(flat)
 
+st.subheader("📋 Campos extraídos por docente")
+for linha in linhas:
+    nome = linha.get("Nome", "Desconhecido")
+    st.markdown(f"**{nome}**: {len(linha.keys()) - 1} campos extraídos")
+    with st.expander("🔍 Ver campos", expanded=False):
+        st.write(sorted([k for k in linha.keys() if k != "Nome"]))
+
 # Gera DataFrame a partir dos dados achatados
-df = pd.DataFrame(linhas).fillna(0)
+df = pd.DataFrame(linhas)
+
+# Garante que todas as colunas presentes em qualquer docente estejam no DataFrame, mesmo que vazias
+for campo in campos_presentes:
+    if campo not in df.columns:
+        df[campo] = 0
+
+# Preenche valores ausentes com zero
+df = df.fillna(0)
 colunas_ordenadas = ["Nome"] + [c for c in df.columns if c != "Nome"]
 df = df[colunas_ordenadas]
 
