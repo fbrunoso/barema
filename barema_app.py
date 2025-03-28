@@ -99,9 +99,12 @@ try:
 except FileNotFoundError:
     cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv")
 
+# Trata NaN e converte tudo para string sem espaços
+cache_df["Tipo"] = cache_df["Tipo"].fillna("0").astype(str).str.strip()
+
 for _, row in cache_df.iterrows():
     pesos_cache[row["Indicador"]] = row["Peso"]
-    tipos_cache[row["Indicador"]] = str(row.get("Tipo", "0")).strip()
+    tipos_cache[row["Indicador"]] = row["Tipo"]
 
 st.subheader("⚙️ Configuração de Pesos e Tipos")
 pesos = {}
@@ -111,37 +114,39 @@ st.markdown("Defina abaixo o peso e o tipo (1, 2, 3) de cada indicador. Use 0 pa
 opcoes_tipo = ["0", "1", "2", "3"]
 
 for coluna in df.columns:
-    if coluna != "Nome":
-        cols = st.columns([0.6, 0.4])
-        with cols[0]:
-            pesos[coluna] = st.number_input(
-                f"Peso - {coluna}",
-                value=pesos_cache.get(coluna, 0.0),
-                step=0.1,
-                key=f"peso_{coluna}"
-            )
-        with cols[1]:
-            tipo_padrao = tipos_cache.get(coluna, "0")
-            tipo_padrao = str(tipo_padrao).strip()
+    if coluna == "Nome":
+        continue  # pula a coluna Nome
 
-            # Converte "1.0" → "1" se for número
-            try:
-                tipo_float = float(tipo_padrao)
-                tipo_padrao = str(int(tipo_float))
-            except:
-                pass
+    cols = st.columns([0.6, 0.4])
+    with cols[0]:
+        pesos[coluna] = st.number_input(
+            f"Peso - {coluna}",
+            value=pesos_cache.get(coluna, 0.0),
+            step=0.1,
+            key=f"peso_{coluna}"
+        )
+    with cols[1]:
+        tipo_padrao = tipos_cache.get(coluna, "0")
+        tipo_padrao = str(tipo_padrao).strip()
 
-            if tipo_padrao not in opcoes_tipo:
-                st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
-                tipo_padrao = "0"
+        # Converte "1.0" → "1" se for número
+        try:
+            tipo_float = float(tipo_padrao)
+            tipo_padrao = str(int(tipo_float))
+        except:
+            pass
 
-            tipos[coluna] = st.radio(
-                f"Tipo - {coluna}",
-                options=opcoes_tipo,
-                horizontal=True,
-                key=f"tipo_{coluna}_{coluna}",
-                value=tipo_padrao
-            )
+        if tipo_padrao not in opcoes_tipo:
+            st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
+            tipo_padrao = "0"
+
+        tipos[coluna] = st.radio(
+            f"Tipo - {coluna}",
+            options=opcoes_tipo,
+            horizontal=True,
+            key=f"tipo_{coluna}_{coluna}",
+            value=tipo_padrao
+        )
 
 if st.button("🧮 Calcular Pontuação"):
     pesos_df = pd.DataFrame({
