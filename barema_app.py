@@ -79,10 +79,14 @@ st.subheader("⚖️ Atribuição de Pesos")
 pesos = {}
 for coluna in df.columns:
     if coluna != "Nome":
-        pesos[coluna] = st.number_input(f"Peso para {coluna}", value=1.0, step=0.1)
+        pesos[coluna] = st.number_input(f"Peso para {coluna}", value=1.0, step=0.1, key=f"peso_{coluna}")
 
 # Cálculo da pontuação total para todos os docentes
-df["Pontuação Total"] = df.drop(columns=["Nome"]).apply(lambda row: sum(row[col] * pesos[col] for col in row.index), axis=1)
+try:
+    colunas_numericas = [col for col in df.columns if col != "Nome"]
+    df["Pontuação Total"] = df[colunas_numericas].apply(lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1)
+except Exception as e:
+    st.error(f"Erro no cálculo da pontuação total: {e}")
 
 # Exibe resultado final
 st.subheader("📊 Pontuação Final por Docente")
