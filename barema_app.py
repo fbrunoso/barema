@@ -126,32 +126,32 @@ for coluna in df.columns:
             key=f"peso_{coluna}"
         )
     with cols[1]:
-    raw_tipo = tipos_cache.get(coluna, "0")
+        raw_tipo = tipos_cache.get(coluna, "0")
 
-    try:
-        # Tenta converter para float, depois int, depois str
-        tipo_num = int(float(raw_tipo))
-        tipo_padrao = str(tipo_num)
-    except:
-        # Se falhar, garante que seja string limpa
-        tipo_padrao = str(raw_tipo).strip().lower()
+        try:
+            # Tenta converter para float, depois int, depois str
+            tipo_num = int(float(raw_tipo))
+            tipo_padrao = str(tipo_num)
+        except:
+            # Se falhar, garante que seja string limpa
+            tipo_padrao = str(raw_tipo).strip().lower()
 
-    opcoes_tipo = ["0", "1", "2", "3"]
+        opcoes_tipo = ["0", "1", "2", "3"]
 
-    if tipo_padrao not in opcoes_tipo:
-        st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
-        tipo_padrao = "0"
+        if tipo_padrao not in opcoes_tipo:
+            st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
+            tipo_padrao = "0"
 
-    # Segurança máxima antes de exibir
-    assert tipo_padrao in opcoes_tipo, f"Valor inesperado em tipo_padrao: {tipo_padrao}"
+        # Segurança máxima antes de exibir
+        assert tipo_padrao in opcoes_tipo, f"Valor inesperado em tipo_padrao: {tipo_padrao}"
 
-    tipos[coluna] = st.radio(
-        f"Tipo - {coluna}",
-        options=opcoes_tipo,
-        horizontal=True,
-        key=f"tipo_{coluna}_{coluna}",
-        value=tipo_padrao
-    )
+        tipos[coluna] = st.radio(
+            f"Tipo - {coluna}",
+            options=opcoes_tipo,
+            horizontal=True,
+            key=f"tipo_{coluna}_{coluna}",
+            value=tipo_padrao
+        )
 
 
 if st.button("🧮 Calcular Pontuação"):
