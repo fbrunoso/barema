@@ -102,6 +102,7 @@ else:
 pesos_df = pd.DataFrame(list(pesos.items()), columns=["Indicador", "Peso"])
 
 # Cria planilha com duas abas
+towrite = BytesIO()
 with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
     df.to_excel(writer, index=False, sheet_name="Produção")
     pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
