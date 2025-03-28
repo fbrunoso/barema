@@ -89,70 +89,30 @@ df = df[colunas_ordenadas]
 
 st.success("✅ Planilha completa gerada com sucesso!")
 
-# Interface de configuração de pesos e tipos
+# Carrega pesos e tipos do CSV (com correção dos formatos)
 PESOS_CACHE_PATH = "pesos_padrao.csv"
-pesos_cache = {}
-tipos_cache = {}
 
 try:
     cache_df = pd.read_csv(PESOS_CACHE_PATH)
 except FileNotFoundError:
     cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv")
 
-# Trata valores da coluna Tipo: converte NaN e float (ex: 2.0) para string inteira (ex: "2")
+# Corrige a coluna Tipo: transforma float/string/NaN em "0", "1", "2", "3"
 cache_df["Tipo"] = (
     cache_df["Tipo"]
     .fillna("0")
     .apply(lambda x: str(int(float(x))) if str(x).replace('.', '', 1).isdigit() else "0")
 )
 
-for _, row in cache_df.iterrows():
-    pesos_cache[row["Indicador"]] = row["Peso"]
-    tipos_cache[row["Indicador"]] = row["Tipo"]
+# Exibe a tabela de indicadores com pesos e tipos
+st.subheader("⚙️ Pesos e Tipos Carregados do CSV")
+st.dataframe(cache_df, use_container_width=True)
 
-st.subheader("⚙️ Configuração de Pesos e Tipos")
-pesos = {}
-tipos = {}
-st.markdown("Defina abaixo o peso e o tipo (1, 2, 3) de cada indicador. Use 0 para indicadores sem tipo.")
+# Dicionários para uso posterior
+pesos = dict(zip(cache_df["Indicador"], cache_df["Peso"]))
+tipos = dict(zip(cache_df["Indicador"], cache_df["Tipo"]))
 
-opcoes_tipo = ["0", "1", "2", "3"]
-
-# Lista de colunas que não devem receber configuração de peso/tipo
-colunas_ignoradas = ["Nome", "cpf", "datanascimento", "nacionalidade", "paisnascimento"]
-
-for coluna in df.columns:
-    if coluna.lower() in [c.lower() for c in colunas_ignoradas]:
-        continue  # pula campos de identificação e controle
-
-
-    cols = st.columns([0.6, 0.4])
-    with cols[0]:
-        pesos[coluna] = st.number_input(
-            f"Peso - {coluna}",
-            value=pesos_cache.get(coluna, 0.0),
-            step=0.1,
-            key=f"peso_{coluna}"
-        )
-    with cols[1]:
-        raw_tipo = tipos_cache.get(coluna, "0")
-        try:
-            tipo_num = int(float(raw_tipo))
-            tipo_padrao = str(tipo_num)
-        except:
-            tipo_padrao = "0"
-
-        if tipo_padrao not in opcoes_tipo:
-            st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
-            tipo_padrao = "0"
-
-        tipos[coluna] = st.radio(
-            f"Tipo - {coluna}",
-            options=opcoes_tipo,
-            horizontal=True,
-            key=f"tipo_{coluna}_{coluna}",
-            value=tipo_padrao
-        )
-
+# Botão para calcular
 if st.button("🧮 Calcular Pontuação"):
     pesos_df = pd.DataFrame({
         "Indicador": list(pesos.keys()),
@@ -168,7 +128,7 @@ if st.button("🧮 Calcular Pontuação"):
         st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
 
         tipo_totais = []
-        for tipo in ["1", "2", "3"]:  # ignora tipo 0
+        for tipo in ["1", "2", "3"]:
             tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if str(row["Tipo"]) == tipo]
             if tipo_cols:
                 tipo_label = f"Tipo {tipo} Total"
@@ -182,7 +142,7 @@ if st.button("🧮 Calcular Pontuação"):
             cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
             st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
         else:
-            st.info("ℹ️ Nenhum tipo relevante foi definido. Defina pelo menos um tipo (1, 2 ou 3) para ver os totais por tipo.")
+            st.info("ℹ️ Nenhum tipo relevante foi definido. Defina pelo menos um tipo (1, 2 ou 3) no CSV.")
 
     except Exception as e:
         st.error(f"Erro no cálculo da pontuação total: {e}")
