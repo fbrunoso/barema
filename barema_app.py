@@ -119,12 +119,14 @@ for coluna in df.columns:
             )
         with cols[1]:
             tipo_padrao = tipos_cache.get(coluna, "")
+            opcoes_tipo = ["", "1", "2", "3"]
+            valor_default = tipo_padrao if tipo_padrao in opcoes_tipo else ""
             tipos[coluna] = st.radio(
                 f"Tipo - {coluna}",
-                options=["", "1", "2", "3"],
+                options=opcoes_tipo,
                 horizontal=True,
                 key=f"tipo_{coluna}",
-                value=tipo_padrao if tipo_padrao in ["", "1", "2", "3"] else ""
+                value=valor_default
             )
 
 if st.button("🧮 Calcular Pontuação"):
