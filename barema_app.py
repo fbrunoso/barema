@@ -14,7 +14,8 @@ st.title("📄 Planilha Completa de Produção Científica - UESC")
 dados_docentes = [
     {"CPF": "78209587749", "Nome": "andre", "DataNascimento": "01011970"},
     {"CPF": "03733046765", "Nome": "bruno", "DataNascimento": "01021970"},
-    {"CPF": "16752072833", "Nome": "fernanda", "DataNascimento": "01011972"}
+    {"CPF": "16752072833", "Nome": "fernanda", "DataNascimento": "01011972"},
+    {"CPF": "33405751268", "Nome": "jorge", "DataNascimento": "01011972"}
 ]
 
 # Função para buscar dados da API
