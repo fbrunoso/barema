@@ -123,14 +123,23 @@ for coluna in df.columns:
         with cols[1]:
             tipo_padrao = tipos_cache.get(coluna, "0")
             tipo_padrao = str(tipo_padrao).strip()
+
+            # Converte "1.0" → "1" se for número
+            try:
+                tipo_float = float(tipo_padrao)
+                tipo_padrao = str(int(tipo_float))
+            except:
+                pass
+
             if tipo_padrao not in opcoes_tipo:
                 st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
                 tipo_padrao = "0"
+
             tipos[coluna] = st.radio(
                 f"Tipo - {coluna}",
                 options=opcoes_tipo,
                 horizontal=True,
-                key=f"tipo_{coluna}",
+                key=f"tipo_{coluna}_{coluna}",
                 value=tipo_padrao
             )
 
