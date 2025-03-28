@@ -126,27 +126,33 @@ for coluna in df.columns:
             key=f"peso_{coluna}"
         )
     with cols[1]:
-        tipo_padrao = tipos_cache.get(coluna, "0")
-        tipo_padrao = str(tipo_padrao).strip()
+    raw_tipo = tipos_cache.get(coluna, "0")
 
-        # Converte "1.0" → "1" se for número
-        try:
-            tipo_float = float(tipo_padrao)
-            tipo_padrao = str(int(tipo_float))
-        except:
-            pass
+    try:
+        # Tenta converter para float, depois int, depois str
+        tipo_num = int(float(raw_tipo))
+        tipo_padrao = str(tipo_num)
+    except:
+        # Se falhar, garante que seja string limpa
+        tipo_padrao = str(raw_tipo).strip().lower()
 
-        if tipo_padrao not in opcoes_tipo:
-            st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
-            tipo_padrao = "0"
+    opcoes_tipo = ["0", "1", "2", "3"]
 
-        tipos[coluna] = st.radio(
-            f"Tipo - {coluna}",
-            options=opcoes_tipo,
-            horizontal=True,
-            key=f"tipo_{coluna}_{coluna}",
-            value=tipo_padrao
-        )
+    if tipo_padrao not in opcoes_tipo:
+        st.warning(f"⚠️ Tipo inválido para '{coluna}': '{tipo_padrao}' — substituído por '0'")
+        tipo_padrao = "0"
+
+    # Segurança máxima antes de exibir
+    assert tipo_padrao in opcoes_tipo, f"Valor inesperado em tipo_padrao: {tipo_padrao}"
+
+    tipos[coluna] = st.radio(
+        f"Tipo - {coluna}",
+        options=opcoes_tipo,
+        horizontal=True,
+        key=f"tipo_{coluna}_{coluna}",
+        value=tipo_padrao
+    )
+
 
 if st.button("🧮 Calcular Pontuação"):
     pesos_df = pd.DataFrame({
