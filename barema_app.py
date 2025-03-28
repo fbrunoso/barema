@@ -144,6 +144,8 @@ for coluna in df.columns:
 
         # Segurança máxima antes de exibir
         assert tipo_padrao in opcoes_tipo, f"Valor inesperado em tipo_padrao: {tipo_padrao}"
+        
+        st.write(f"[DEBUG] Coluna: {coluna}, tipo_padrao: '{tipo_padrao}', opções: {opcoes_tipo}")
 
         tipos[coluna] = st.radio(
             f"Tipo - {coluna}",
