@@ -42,41 +42,36 @@ def consultar_dados(docente):
     else:
         return {}
 
-# Consulta dados de todos os docentes
+# Consulta dados de todos os docentes e transforma diretamente em linhas para DataFrame
+def extrair_linha(nome, dados):
+    linha = {"Nome": nome}
+    campos = [
+        ("Artigos em Periódicos", ["producaoBibliografica", "artigosEmPeriodicos"]),
+        ("Trabalhos em Anais", ["producaoBibliografica", "trabalhosEmAnais"]),
+        ("Livros", ["producaoBibliografica", "livros"]),
+        ("Capítulos", ["producaoBibliografica", "capitulos"]),
+        ("Software", ["producaoTecnica", "software"]),
+        ("Patentes", ["producaoTecnica", "patente"]),
+        ("Orientações Concluídas", ["orientacoes", "concluidas"]),
+        ("Projetos", ["projetos"])
+    ]
+    for rotulo, caminho in campos:
+        valor = dados
+        for chave in caminho:
+            valor = valor.get(chave, {}) if isinstance(valor, dict) else {}
+        linha[rotulo] = valor.get("total", 0) if isinstance(valor, dict) else 0
+    return linha
+
+linhas = []
 dados_todos = []
 for docente in dados_docentes:
     with st.spinner(f"🔍 Buscando dados para {docente['Nome'].capitalize()}..."):
         dados = consultar_dados(docente)
-        dados["nome"] = docente["Nome"].capitalize()
-        dados_todos.append(dados)
+        dados_todos.append({"nome": docente["Nome"].capitalize(), "dados": dados})
         st.expander(f"📄 JSON bruto - {docente['Nome'].capitalize()}").json(dados)
+        linhas.append(extrair_linha(docente["Nome"].capitalize(), dados))
 
-# Criação do DataFrame consolidado
-linhas = []
-for d in dados_todos:
-    def extrair_total(dic, chave):
-        val = dic.get(chave)
-        if isinstance(val, dict):
-            return val.get("total", 0)
-        return val if isinstance(val, int) else 0
-
-    prod_bib = d.get("producaoBibliografica", {})
-    prod_tec = d.get("producaoTecnica", {})
-    orient = d.get("orientacoes", {})
-    proj = d.get("projetos", {})
-
-    linhas.append({
-        "Nome": d.get("nome", "-"),
-        "Artigos em Periódicos": extrair_total(prod_bib, "artigosEmPeriodicos"),
-        "Trabalhos em Anais": extrair_total(prod_bib, "trabalhosEmAnais"),
-        "Livros": extrair_total(prod_bib, "livros"),
-        "Capítulos": extrair_total(prod_bib, "capitulos"),
-        "Software": extrair_total(prod_tec, "software"),
-        "Patentes": extrair_total(prod_tec, "patente"),
-        "Orientações Concluídas": extrair_total(orient, "concluidas"),
-        "Projetos": extrair_total(proj, "total")
-    })
-
+# Gera DataFrame a partir das linhas
 df = pd.DataFrame(linhas)
 
 st.subheader("📊 Comparativo de Produção Científica")
