@@ -108,12 +108,18 @@ try:
 except FileNotFoundError:
     cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv")
 
+#for _, row in cache_df.iterrows():
+#    pesos_cache[row["Indicador"]] = row["Peso"]
+#    tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
+#    for _, row in cache_df.iterrows():
+#        pesos_cache[row["Indicador"]] = row["Peso"]
+#        tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
+
 for _, row in cache_df.iterrows():
     pesos_cache[row["Indicador"]] = row["Peso"]
     tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
-    for _, row in cache_df.iterrows():
-        pesos_cache[row["Indicador"]] = row["Peso"]
-        tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
+
+
 st.subheader("⚙️ Configuração de Pesos e Tipos")
 pesos = {}
 tipos = {}
