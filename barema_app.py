@@ -97,6 +97,16 @@ df = df[colunas_ordenadas]
 st.success("✅ Planilha completa gerada com sucesso!")
 
 # Interface de configuração de pesos e tipos
+PESOS_CACHE_PATH = "pesos_padrao.csv"
+
+# Carrega pesos e tipos do cache se existir
+pesos_cache = {}
+tipos_cache = {}
+if os.path.exists(PESOS_CACHE_PATH):
+    cache_df = pd.read_csv(PESOS_CACHE_PATH)
+    for _, row in cache_df.iterrows():
+        pesos_cache[row["Indicador"]] = row["Peso"]
+        tipos_cache[row["Indicador"]] = str(row.get("Tipo", ""))
 st.subheader("⚙️ Configuração de Pesos e Tipos")
 pesos = {}
 tipos = {}
@@ -106,9 +116,9 @@ for coluna in df.columns:
     if coluna != "Nome":
         cols = st.columns([0.6, 0.4])
         with cols[0]:
-            pesos[coluna] = st.number_input(f"Peso - {coluna}", value=0.0, step=0.1, key=f"peso_{coluna}")
+            pesos[coluna] = st.number_input(f"Peso - {coluna}", value=pesos_cache.get(coluna, 0.0), step=0.1, key=f"peso_{coluna}")
         with cols[1]:
-            tipos[coluna] = st.radio("Tipo", options=["", "1", "2", "3"], horizontal=True, key=f"tipo_{coluna}")
+            tipos[coluna] = st.radio("Tipo", options=["", "1", "2", "3"], horizontal=True, index=["", "1", "2", "3"].index(tipos_cache.get(coluna, "")), key=f"tipo_{coluna}")
 
 # Botão para calcular
 
@@ -160,3 +170,6 @@ if st.button("🧮 Calcular Pontuação"):
         pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
     towrite.seek(0)
     st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
+
+    # Salva pesos e tipos no cache
+    pesos_export.to_csv(PESOS_CACHE_PATH, index=False)
