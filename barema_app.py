@@ -5,6 +5,7 @@ st.set_page_config(page_title="Barema - UESC", layout="wide")
 import requests
 import pandas as pd
 from io import BytesIO
+from pathlib import Path
 
 st.title("📄 Barema - Produção Científica - UESC")
 
@@ -49,23 +50,47 @@ def flatten_json(y):
     return out
 
 # === Upload do CSV com pesos/tipos
-st.subheader("📤 Envie o arquivo de Pesos e Tipos")
-uploaded_file = st.file_uploader("CSV com as colunas: Indicador, Peso, Tipo", type="csv")
+st.subheader("📄 Envie ou selecione a origem do arquivo de Pesos e Tipos")
+origem_pesos = st.radio("📁 Origem dos Pesos e Tipos:", ["Arquivo enviado", "Cache local", "Github (online)"])
 
-if not uploaded_file:
-    st.warning("⚠️ Por favor, envie o arquivo CSV para continuar.")
+uploaded_file = None
+if origem_pesos == "Arquivo enviado":
+    uploaded_file = st.file_uploader("CSV com as colunas: Indicador, Peso, Tipo", type="csv")
+
+if origem_pesos == "Arquivo enviado" and uploaded_file:
+    pesos_df = pd.read_csv(uploaded_file)
+elif origem_pesos == "Cache local" and Path("pesos_tipos_padrao.csv").exists():
+    pesos_df = pd.read_csv("pesos_tipos_padrao.csv")
+elif origem_pesos == "Github (online)":
+    url_remoto = "https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv"
+    pesos_df = pd.read_csv(url_remoto)
+else:
+    st.error("❌ Nenhuma fonte válida de pesos disponível. Envie um arquivo ou selecione outra opção.")
     st.stop()
 
-# === Carrega e limpa os dados do CSV
-pesos_df = pd.read_csv(uploaded_file)
+# Limpeza e tratamento
 pesos_df.columns = pesos_df.columns.str.strip().str.lower()
-pesos_df["tipo"] = (
-    pd.to_numeric(pesos_df["tipo"], errors="coerce")
-    .fillna(0)
-    .astype(int)
-    .astype(str)
-)
+pesos_df["tipo"] = pd.to_numeric(pesos_df["tipo"], errors="coerce").fillna(0).astype(int).astype(str)
 pesos_df["peso"] = pd.to_numeric(pesos_df["peso"], errors="coerce").fillna(0)
+
+# Inicializa os dicionários
+pesos = dict(zip(pesos_df["indicador"], pesos_df["peso"]))
+tipos = dict(zip(pesos_df["indicador"], pesos_df["tipo"]))
+
+# Interface retraída para edição manual
+with st.expander("🔧 Ajustar manualmente pesos e tipos (opcional)"):
+    opcoes_tipo = ["0", "1", "2", "3"]
+    for _, row in pesos_df.iterrows():
+        indicador = row["indicador"]
+        col1, col2 = st.columns([0.6, 0.4])
+        with col1:
+            pesos[indicador] = st.number_input(f"Peso - {indicador}", value=float(pesos[indicador]), step=0.1, key=f"peso_{indicador}")
+        with col2:
+            tipo_padrao = tipos[indicador] if tipos[indicador] in opcoes_tipo else "0"
+            tipos[indicador] = st.radio(
+                f"Tipo - {indicador}", options=opcoes_tipo,
+                index=opcoes_tipo.index(tipo_padrao), horizontal=True, key=f"tipo_{indicador}"
+            )
 
 # === Busca dados da API
 st.subheader("🔍 Coleta de Dados da API")
@@ -79,7 +104,6 @@ for docente in dados_docentes:
         flat["Nome"] = docente["Nome"].capitalize()
         linhas.append(flat)
 
-# === Criação do DataFrame principal
 df = pd.DataFrame(linhas)
 for campo in campos_presentes:
     if campo not in df.columns:
@@ -90,31 +114,11 @@ df = df[colunas_ordenadas]
 
 st.success("✅ Planilha gerada com sucesso!")
 
-# === Interface de configuração de pesos e tipos
-st.subheader("⚙️ Configuração de Pesos e Tipos")
-pesos = {}
-tipos = {}
-opcoes_tipo = ["0", "1", "2", "3"]
-
-for _, row in pesos_df.iterrows():
-    indicador = row["indicador"]
-    col1, col2 = st.columns([0.6, 0.4])
-    with col1:
-        pesos[indicador] = st.number_input(
-            f"Peso - {indicador}", value=float(row["peso"]), step=0.1, key=f"peso_{indicador}"
-        )
-    with col2:
-        tipo_padrao = row["tipo"] if row["tipo"] in opcoes_tipo else "0"
-        tipos[indicador] = st.radio(
-            f"Tipo - {indicador}", options=opcoes_tipo,
-            index=opcoes_tipo.index(tipo_padrao), horizontal=True, key=f"tipo_{indicador}"
-        )
-
 # === Cálculo robusto
-if st.button("🧮 Calcular Pontuação"):
+df_resultado = df.copy()
+if st.button("🧲 Calcular Pontuação"):
     indicadores_validos = list(set(df.columns) & set(pesos.keys()))
 
-    # Diagnóstico
     st.subheader("🧪 Diagnóstico de Indicadores")
     st.markdown(f"- 🔢 **Indicadores no DataFrame**: `{len(df.columns)}`")
     st.markdown(f"- 🎯 **Indicadores no CSV**: `{len(pesos)}`")
@@ -129,17 +133,17 @@ if st.button("🧮 Calcular Pontuação"):
             total += valor * peso
         return total
 
-    df["Pontuação Total"] = df.apply(calcular_pontuacao, axis=1)
+    df_resultado["Pontuação Total"] = df_resultado.apply(calcular_pontuacao, axis=1)
 
-    st.subheader("📊 Pontuação Final por Docente")
-    st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+    st.subheader("📈 Pontuação Final por Docente")
+    st.dataframe(df_resultado[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
 
     tipo_totais = []
     for tipo in ["1", "2", "3"]:
-        tipo_cols = [k for k, v in tipos.items() if v == tipo and k in df.columns]
+        tipo_cols = [k for k, v in tipos.items() if v == tipo and k in df_resultado.columns]
         if tipo_cols:
             tipo_label = f"Tipo {tipo} Total"
-            df[tipo_label] = df[tipo_cols].apply(
+            df_resultado[tipo_label] = df_resultado[tipo_cols].apply(
                 lambda row: sum(
                     pd.to_numeric(row[col], errors="coerce") * float(pesos.get(col, 0))
                     if pd.notna(pd.to_numeric(row[col], errors="coerce")) else 0
@@ -149,14 +153,13 @@ if st.button("🧮 Calcular Pontuação"):
             tipo_totais.append(tipo_label)
 
     if tipo_totais:
-        st.subheader("📈 Totais por Tipo")
+        st.subheader("📁 Totais por Tipo")
         cols_to_show = ["Nome"] + tipo_totais + ["Pontuação Total"]
-        st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
+        st.dataframe(df_resultado[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
     else:
         st.info("ℹ️ Nenhum tipo relevante foi definido.")
 
-    # Exportações
-    st.subheader("📤 Exportar Resultados")
+    st.subheader("📄 Exportar Resultados")
     pesos_export = pd.DataFrame({
         "Indicador": list(pesos.keys()),
         "Peso": [pesos[k] for k in pesos.keys()],
@@ -166,15 +169,14 @@ if st.button("🧮 Calcular Pontuação"):
     st.download_button("📁 Baixar pesos e tipos (CSV)", data=pesos_export.to_csv(index=False).encode('utf-8'),
                        file_name="pesos_tipos_atualizado.csv", mime="text/csv")
 
-    # 🔄 Exportação da planilha completa com todos os dados
     towrite = BytesIO()
     with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name="Produção Completa")
+        df_resultado.to_excel(writer, index=False, sheet_name="Produção Completa")
         pesos_export.to_excel(writer, index=False, sheet_name="Pesos e Tipos")
     towrite.seek(0)
 
     st.download_button(
-        "📥 Baixar Excel com toda a produção",
+        "📅 Baixar Excel com toda a produção",
         towrite,
         file_name="producao_uesc_completa.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
