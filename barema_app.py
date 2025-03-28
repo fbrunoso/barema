@@ -144,7 +144,7 @@ if st.button("🧮 Calcular Pontuação"):
                 df[f"Tipo {tipo} Total"] = df[tipo_cols].apply(lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in tipo_cols), axis=1)
         st.subheader("📈 Totais por Tipo")
         cols_to_show = ["Nome"] + [col for col in df.columns if col.startswith("Tipo ")] + ["Pontuação Total"]
-        st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True), use_container_width=True)
+        st.dataframe(df[cols_to_show].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
     except Exception as e:
         st.error(f"Erro no cálculo da pontuação total: {e}")
 
@@ -156,4 +156,3 @@ if st.button("🧮 Calcular Pontuação"):
         pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
     towrite.seek(0)
     st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
-
