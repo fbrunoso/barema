@@ -84,7 +84,9 @@ for coluna in df.columns:
 # Cálculo da pontuação total para todos os docentes
 try:
     colunas_numericas = [col for col in df.columns if col != "Nome"]
-    df["Pontuação Total"] = df[colunas_numericas].apply(lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1)
+    df["Pontuação Total"] = df[colunas_numericas].apply(
+        lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
+    )
 except Exception as e:
     st.error(f"Erro no cálculo da pontuação total: {e}")
 
@@ -93,7 +95,7 @@ st.subheader("📊 Pontuação Final por Docente")
 if "Pontuação Total" in df.columns:
     st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
 else:
-    st.warning("⚠️ Não foi possível calcular a pontuação total. Verifique oos dados e os pesos atribuídos.")
+    st.warning("⚠️ Não foi possível calcular a pontuação total. Verifique os dados e os pesos atribuídos.")
 
 # Botão para download da planilha completa
 towrite = BytesIO()
