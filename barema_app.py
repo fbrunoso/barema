@@ -4,7 +4,6 @@ st.set_page_config(page_title="Barema - UESC", layout="wide")
 
 import requests
 import pandas as pd
-import json
 from io import BytesIO
 
 st.title("📄 Barema - Produção Científica - UESC")
@@ -60,7 +59,14 @@ if not uploaded_file:
 # === Carrega e limpa os dados do CSV
 pesos_df = pd.read_csv(uploaded_file)
 pesos_df.columns = pesos_df.columns.str.strip().str.lower()
-pesos_df["tipo"] = pesos_df["tipo"].fillna("0").astype(str).str.strip()
+
+# 🔧 CORREÇÃO DO TIPO: converte para int → str
+pesos_df["tipo"] = (
+    pd.to_numeric(pesos_df["tipo"], errors="coerce")
+    .fillna(0)
+    .astype(int)
+    .astype(str)
+)
 pesos_df["peso"] = pd.to_numeric(pesos_df["peso"], errors="coerce").fillna(0)
 
 # === Busca dados da API
@@ -102,13 +108,10 @@ for _, row in pesos_df.iterrows():
         )
 
     with col2:
-        raw_tipo = str(row.get("tipo", "0")).strip()
-        if raw_tipo not in opcoes_tipo:
-            st.warning(f"⚠️ Tipo inválido para '{indicador}': '{raw_tipo}' — substituído por '0'")
-            raw_tipo = "0"
+        tipo_padrao = row["tipo"] if row["tipo"] in opcoes_tipo else "0"
         tipos[indicador] = st.radio(
             f"Tipo - {indicador}", options=opcoes_tipo,
-            index=opcoes_tipo.index(raw_tipo), horizontal=True, key=f"tipo_{indicador}"
+            index=opcoes_tipo.index(tipo_padrao), horizontal=True, key=f"tipo_{indicador}"
         )
 
 # === Cálculo robusto
