@@ -98,7 +98,13 @@ else:
     st.warning("⚠️ Não foi possível calcular a pontuação total. Verifique os dados e os pesos atribuídos.")
 
 # Botão para download da planilha completa
-towrite = BytesIO()
-df.to_excel(towrite, index=False, sheet_name="Completa")
+# Também salvar os pesos usados
+pesos_df = pd.DataFrame(list(pesos.items()), columns=["Indicador", "Peso"])
+
+# Cria planilha com duas abas
+with pd.ExcelWriter(towrite, engine='xlsxwriter') as writer:
+    df.to_excel(writer, index=False, sheet_name="Produção")
+    pesos_df.to_excel(writer, index=False, sheet_name="Pesos")
+
 towrite.seek(0)
 st.download_button("📥 Baixar planilha Excel completa", towrite, file_name="producao_cientifica_completa.xlsx")
