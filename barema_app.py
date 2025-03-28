@@ -6,7 +6,6 @@ import requests
 import pandas as pd
 import json
 from io import BytesIO
-import os
 
 st.title("📄 Planilha Completa de Produção Científica - UESC")
 
@@ -89,52 +88,56 @@ df = df[colunas_ordenadas]
 
 st.success("✅ Planilha completa gerada com sucesso!")
 
-# Carrega pesos e tipos do CSV (com correção dos formatos)
+# Carrega pesos e tipos do CSV (com correções)
 PESOS_CACHE_PATH = "pesos_padrao.csv"
-
 try:
     cache_df = pd.read_csv(PESOS_CACHE_PATH)
 except FileNotFoundError:
     cache_df = pd.read_csv("https://raw.githubusercontent.com/fbrunoso/barema/refs/heads/main/pesos_tipos.csv")
 
-st.subheader("🧪 Diagnóstico: Indicadores encontrados vs CSV")
-st.write("📌 Colunas do DataFrame extraído:", df.columns.tolist())
-st.write("📌 Indicadores no CSV:", list(pesos.keys()))
-
-
-# Corrige a coluna Tipo: transforma float/string/NaN em "0", "1", "2", "3"
-cache_df["Tipo"] = (
-    cache_df["Tipo"]
-    .fillna("0")
-    .apply(lambda x: str(int(float(x))) if str(x).replace('.', '', 1).isdigit() else "0")
+# Normaliza os nomes dos indicadores e tipos
+cache_df["Indicador"] = cache_df["Indicador"].astype(str).str.strip()
+cache_df["Tipo"] = cache_df["Tipo"].fillna("0").apply(
+    lambda x: str(int(float(x))) if str(x).replace('.', '', 1).isdigit() else "0"
 )
 
-# Exibe a tabela de indicadores com pesos e tipos
-st.subheader("⚙️ Pesos e Tipos Carregados do CSV")
-st.dataframe(cache_df, use_container_width=True)
-
-# Dicionários para uso posterior
+# Cria dicionários de pesos e tipos
 pesos = dict(zip(cache_df["Indicador"], cache_df["Peso"]))
 tipos = dict(zip(cache_df["Indicador"], cache_df["Tipo"]))
 
-# Botão para calcular
+# Diagnóstico visual
+st.subheader("🧪 Diagnóstico de Indicadores")
+st.write("📌 Colunas extraídas do DataFrame:", df.columns.tolist())
+st.write("📌 Indicadores no CSV:", list(pesos.keys()))
+
+# Mostra quais indicadores do CSV estão disponíveis no DataFrame
+indicadores_validos = [col for col in df.columns if col in pesos]
+st.subheader("🎯 Indicadores que serão utilizados no cálculo:")
+st.write(indicadores_validos)
+
+# Exibe o CSV carregado com pesos e tipos
+st.subheader("📄 Pesos e Tipos Carregados")
+st.dataframe(cache_df, use_container_width=True)
+
+# Botão para cálculo
 if st.button("🧮 Calcular Pontuação"):
     pesos_df = pd.DataFrame({
-        "Indicador": list(pesos.keys()),
-        "Peso": [pesos[k] for k in pesos.keys()],
-        "Tipo": [tipos.get(k, "0") for k in pesos.keys()]
+        "Indicador": indicadores_validos,
+        "Peso": [pesos[k] for k in indicadores_validos],
+        "Tipo": [tipos.get(k, "0") for k in indicadores_validos]
     })
+
     try:
-        colunas_numericas = [col for col in df.columns if col != "Nome" and pd.api.types.is_numeric_dtype(df[col])]
-        df["Pontuação Total"] = df[colunas_numericas].apply(
-            lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in colunas_numericas), axis=1
+        df["Pontuação Total"] = df[indicadores_validos].apply(
+            lambda row: sum(float(row[col]) * float(pesos.get(col, 0)) for col in indicadores_validos), axis=1
         )
+
         st.subheader("📊 Pontuação Final por Docente")
         st.dataframe(df[["Nome", "Pontuação Total"]].sort_values(by="Pontuação Total", ascending=False), use_container_width=True)
 
         tipo_totais = []
         for tipo in ["1", "2", "3"]:
-            tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if str(row["Tipo"]) == tipo]
+            tipo_cols = [row["Indicador"] for _, row in pesos_df.iterrows() if row["Tipo"] == tipo]
             if tipo_cols:
                 tipo_label = f"Tipo {tipo} Total"
                 df[tipo_label] = df[tipo_cols].apply(
@@ -152,7 +155,7 @@ if st.button("🧮 Calcular Pontuação"):
     except Exception as e:
         st.error(f"Erro no cálculo da pontuação total: {e}")
 
-    st.subheader("📤 Exportar Pesos e Tipos")
+    st.subheader("📤 Exportar Pesos, Tipos e Resultados")
     pesos_export = pd.DataFrame({
         "Indicador": list(pesos.keys()),
         "Peso": [pesos[k] for k in pesos.keys()],
