@@ -1044,7 +1044,7 @@ dados_docentes = [
     {
         "CPF": "73329916672",
         "Nome": "fatima Cerqueira Alvim",
-        "DataNascimento": "0972-11-08"
+        "DataNascimento": "08111972"
     },
     {
         "CPF": "04464336671",
