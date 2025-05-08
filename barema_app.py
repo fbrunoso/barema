@@ -17,6 +17,12 @@ dados_docentes = [
         "DataNascimento": "06021976"
     },
     {
+        "CPF": "73329916672",
+        "Nome": "Fatima Cerqueira Alvim",
+        "DataNascimento": "15091974"
+    },
+    
+    {
         "CPF": "01717965946",
         "Nome": "Flavia Regina Miranda",
         "DataNascimento": "26091974"
@@ -1041,11 +1047,7 @@ dados_docentes = [
         "Nome": "Adriana Ramos Mendes",
         "DataNascimento": "23111968"
     },
-    {
-        "CPF": "73329916672",
-        "Nome": "fatima Cerqueira Alvim",
-        "DataNascimento": "08111972"
-    },
+
     {
         "CPF": "04464336671",
         "Nome": "Roberto Ferreira Machado Michel",
