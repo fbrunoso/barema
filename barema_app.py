@@ -78,7 +78,7 @@ def consultar_dados(docente):
         "dataNascimento": docente["DataNascimento"],
         "paisNascimento": "Brasil",
         "nacionalidade": "brasileira",
-        "filtro": {"anoInicio": 2021, "anoFim": 2025},
+        "filtro": {"anoInicio": 2019, "anoFim": 2025},
         "downloadXml": 0
     }
     response = requests.post(url, json=payload, headers=headers)
